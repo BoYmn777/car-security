@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Car Security System</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0f0f0f;
+      font-family: Arial;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+    }
+
+    .card {
+      width: 380px;
+      background: #181818;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.45);
+      transition: 0.2s ease;
+    }
+
+    .title {
+      font-size: 22px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      background: #262626;
+      color: #fff;
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      margin-top: 10px;
+      background: #333;
+      color: #fff;
+      font-size: 15px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #444;
+    }
+
+    .section {
+      margin-top: 20px;
+      padding: 16px;
+      background: #111;
+      border-radius: 12px;
+    }
+
+    .line {
+      margin: 6px 0;
+      font-size: 15px;
+    }
+
+    .alert {
+      margin-top: 8px;
+      color: #48c55c;
+      font-size: 15px;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="title">Car Security System</div>
+
+  <input id="passcodeInput" placeholder="Enter passcode">
+
+  <button onclick="unlockCar()">Unlock</button>
+  <button onclick="startEngine()">Start Engine</button>
+  <button onclick="enterValet()">Valet Mode</button>
+  <button onclick="manualLock()">Lock</button>
+
+  <div class="section">
+    <div class="line" id="state">State Locked</div>
+    <div class="line" id="engine">Engine Off</div>
+    <div class="line" id="fails">Fails 0</div>
+    <div class="alert" id="alert"></div>
+  </div>
+</div>
+
+<script>
+let mainCode = "1234"
+let valetCode = "9999"
+let state = "Locked"
+let engine = "Off"
+let fails = 0
+let cooldown = false
+let cooldownTime = 0
+
+function updateUI() {
+  document.getElementById("state").innerText = "State " + state
+  document.getElementById("engine").innerText = "Engine " + engine
+  document.getElementById("fails").innerText = "Fails " + fails
+}
+
+function alertMsg(msg) {
+  document.getElementById("alert").innerText = msg
+}
+
+function validateCode(code) {
+  if (code.length < 4 || code.length > 8) return false
+  return /^[A-Za-z0-9]+$/.test(code)
+}
+
+function unlockCar() {
+  if (cooldown) return alertMsg("Cooldown active")
+
+  let code = document.getElementById("passcodeInput").value.trim()
+  if (!validateCode(code)) {
+    fails++
+    alertMsg("Invalid passcode")
+    if (fails >= 2) startCooldown()
+    updateUI()
+    return
+  }
+
+  if (code === mainCode) {
+    state = "Unlocked"
+    engine = "Off"
+    fails = 0
+    alertMsg("Unlocked")
+  } else {
+    fails++
+    alertMsg("Wrong passcode")
+    if (fails >= 2) startCooldown()
+  }
+
+  updateUI()
+}
+
+function startEngine() {
+  if (state === "Unlocked") {
+    engine = "On"
+    alertMsg("Engine Starting")
+  } else {
+    alertMsg("Engine Locked")
+  }
+  updateUI()
+}
+
+function enterValet() {
+  let code = document.getElementById("passcodeInput").value.trim()
+
+  if (code === valetCode) {
+    state = "Valet"
+    engine = "Off"
+    fails = 0
+    alertMsg("Valet Mode Active")
+  } else {
+    alertMsg("Wrong valet code")
+  }
+
+  updateUI()
+}
+
+function manualLock() {
+  state = "Locked"
+  engine = "Off"
+  alertMsg("Car Locked")
+  updateUI()
+}
+
+function startCooldown() {
+  cooldown = true
+  cooldownTime = 10
+
+  let timer = setInterval(() => {
+    cooldownTime--
+    alertMsg("Cooldown " + cooldownTime + " sec")
+
+    if (cooldownTime <= 0) {
+      cooldown = false
+      fails = 0
+      alertMsg("Cooldown ended")
+      clearInterval(timer)
+    }
+
+    updateUI()
+  }, 1000)
+}
+</script>
+
+</body>
+</html>
