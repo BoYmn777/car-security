@@ -1,328 +1,429 @@
-#include <iostream> \ // input/output stream
-#include <string> \ // std::string type
-#include <ctime> \ // time_t, time, localtime
-#include <cctype> \ // isdigit, isalpha, isupper, islower
-#include <windows.h> \ // Windows console control functions
-#include <thread> \ // std::thread for background blinking indicator
-#include <mutex> \ // std::mutex to protect shared state and log file
-#include <fstream> \ // file logging (std::ofstream)
-#include <chrono> \ // std::chrono for sleeps and timestamps
-#include <sstream> \ // stringstream for formatted timestamps
-#include <vector> \ // std::vector for building gradients
-#include <iomanip> \ // std::put_time for time formatting
-
-using namespace std; \ // avoid std:: prefixes
-
-// System states
-enum SystemState { LOCKED, UNLOCKED, VALET, COOLDOWN }; \ // define possible states
-
-// Global shared state
-SystemState state = LOCKED; \ // current system state, start locked
-bool engineOn = false; \ // engine status
-int failedAttempts = 0; \ // failed attempts counter
-time_t lastActivity = time(NULL); \ // timestamp of last user activity
-bool stopBlinkThread = false; \ // signal to stop blink thread
-mutex stateMutex; \ // protect shared state across threads
-mutex logMutex; \ // protect log file writes
-
-string masterCode = "1R2A"; \ // default master code
-string valetCode  = "123A"; \ // default valet code
-
-ofstream logFile; \ // global log file stream
-
-// Helper: set console text color
-void setConsoleColor(int color) { \ // wrapper to set console color
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color); \ // call Windows API
-}
-
-// Helper: move cursor to x,y
-void setCursorPos(short x, short y) { \ // set console cursor position
-    COORD pos = { x, y }; \ // COORD struct with x,y
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos); \ // move cursor
-}
-
-// Helper: get formatted timestamp
-string nowTimestamp() { \ // return current time as string
-    auto t = chrono::system_clock::to_time_t(chrono::system_clock::now()); \ // now time_t
-    std::tm tm; \ // struct tm for local time
-    localtime_s(&tm, &t); \ // thread-safe localtime
-    stringstream ss; \ // string builder
-    ss << put_time(&tm, "%Y-%m-%d %H:%M:%S"); \ // format time
-    return ss.str(); \ // return string
-}
-
-// Logging helper
-void logEvent(const string &msg) { \ // write event with timestamp to log file
-    lock_guard<mutex> lock(logMutex); \ // lock for thread safety
-    if (!logFile.is_open()) { \ // open if not already
-        logFile.open("events.log", ios::app); \ // append mode
-    }
-    logFile << nowTimestamp() << " - " << msg << "\n"; \ // write timestamped message
-    logFile.flush(); \ // flush to disk
-}
-
-// Stronger validation rules
-bool isValidCode(const string &code, string &reason) { \ // validate code and give reason if invalid
-    if (code.size() < 4 || code.size() > 8) { reason = "Length must be 4-8"; return false; } \ // length rule
-    bool hasUpper = false; \ // uppercase flag
-    bool hasLower = false; \ // lowercase flag
-    bool hasDigit = false; \ // digit flag
-    char prev = '\0'; \ // previous char for repetition check
-    int repeatCount = 1; \ // repetition counter
-
-    for (size_t i = 0; i < code.size(); ++i) { \ // iterate characters
-        unsigned char c = (unsigned char)code[i]; \ // current char
-        if (isupper(c)) hasUpper = true; \ // check uppercase
-        else if (islower(c)) hasLower = true; \ // check lowercase
-        if (isdigit(c)) hasDigit = true; \ // check digit
-        if (!isalpha(c) && !isdigit(c)) { reason = "Only letters and digits allowed"; return false; } \ // allowed chars
-        if (i > 0) { \ // check repeats
-            if (c == prev) { repeatCount++; } else { repeatCount = 1; } \ // update repeat count
-            if (repeatCount > 2) { reason = "No more than two identical chars in a row"; return false; } \ // reject >2 repeats
-        }
-        prev = c; \ // save previous
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Car Security System</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    if (!hasUpper) { reason = "Must include at least one uppercase letter"; return false; } \ // uppercase requirement
-    if (!hasLower) { reason = "Must include at least one lowercase letter"; return false; } \ // lowercase requirement
-    if (!hasDigit) { reason = "Must include at least one digit"; return false; } \ // digit requirement
-
-    return true; \ // passed all checks
-}
-
-// Animated loading bar for engine actions
-void loadingBar(const string &action, int durationMs = 1200) { \ // show loading bar for 'action' over durationMs
-    const int width = 30; \ // progress width
-    int steps = width; \ // number steps
-    int stepDelay = max(10, durationMs / steps); \ // ms per step
-    setConsoleColor(FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN); \ // cyan-ish for loading
-    cout << action << ": ["; \ // start bar
-    for (int i = 0; i < width; ++i) { \ // fill steps
-        cout << "="; \ // progress char
-        cout.flush(); \ // force output
-        this_thread::sleep_for(chrono::milliseconds(stepDelay)); \ // sleep
-    }
-    cout << "] Done\n"; \ // finish
-    setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE); \ // reset color to white
-    logEvent(action + " completed"); \ // log
-}
-
-// Color-graded engine panel (prints a vertical gradient bar)
-void enginePanel(bool on) { \ // display panel with gradient showing engine status
-    // gradient colors from red to green using available console attributes
-    vector<int> colors = {
-        FOREGROUND_RED, \ // deep red
-        FOREGROUND_RED | FOREGROUND_INTENSITY, \ // bright red
-        FOREGROUND_RED | FOREGROUND_GREEN, \ // yellow/orange
-        FOREGROUND_GREEN | FOREGROUND_INTENSITY, \ // bright green
-        FOREGROUND_GREEN \ // green
-    }; \ // color steps
-    int h = (int)colors.size(); \ // height of panel
-    cout << "\nEngine Panel:\n"; \ // label
-    for (int i = 0; i < h; ++i) { \ // draw rows
-        if (on) setConsoleColor(colors[i] | FOREGROUND_INTENSITY); \ // brighter when on
-        else setConsoleColor(colors[h - 1 - i]); \ // reversed when off to emphasize red
-        cout << "  ██████████████████  \n"; \ // block line
-    }
-    setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE); \ // reset
-}
-
-// ASCII car dashboard
-void asciiDashboard() { \ // print ASCII dashboard header
-    setConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY); \ // green title
-    cout << R"(
-   ______
-  /|_||_\`.__
- (   _    _ _\
- =`-(_)--(_)-' 
-)"; \ // ASCII car art
-    setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE); \ // reset color
-    cout << "\n"; \ // spacing
-}
-
-// Blink engine indicator in background
-void blinkIndicator() { \ // runs on a separate thread; blinks when engineOn is true
-    short x = 0, y = 12; \ // fixed position for indicator (adjust if console layout changes)
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE); \ // console handle
-    CONSOLE_SCREEN_BUFFER_INFO csbi; \ // to get cursor position info
-    GetConsoleScreenBufferInfo(hOut, &csbi); \ // get info
-    x = csbi.dwCursorPosition.X; \ // save current X
-    y = csbi.dwCursorPosition.Y + 2; \ // base Y below current output
-
-    while (!stopBlinkThread) { \ // loop until signaled to stop
-        {
-            lock_guard<mutex> lock(stateMutex); \ // lock state
-            if (engineOn) { \ // when engine is on, blink
-                setCursorPos(0, y); \ // move cursor to indicator line
-                setConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY); \ // bright green
-                cout << "Engine Indicator: [ ON ] "; \ // ON text
-                cout.flush(); \ // flush
-                this_thread::sleep_for(chrono::milliseconds(500)); \ // visible
-                setCursorPos(0, y); \ // overwrite
-                setConsoleColor(FOREGROUND_RED); \ // dim red to simulate off
-                cout << "Engine Indicator: [     ] "; \ // blank
-                cout.flush(); \ // flush
-                this_thread::sleep_for(chrono::milliseconds(500)); \ // off period
-            } else { \ // when engine off, show steady OFF
-                setCursorPos(0, y); \ // position
-                setConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY); \ // bright red
-                cout << "Engine Indicator: [ OFF ] "; \ // OFF text
-                cout.flush(); \ // flush
-                this_thread::sleep_for(chrono::milliseconds(700)); \ // wait
-            }
-        }
-        this_thread::sleep_for(chrono::milliseconds(50)); \ // small yield
+    body {
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      background-image: url("background.gif"); /* put your gif with this name in the repo, or change the file name */
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
     }
 
-    // clear indicator line before exit
-    setCursorPos(0, y);
-    setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-    cout << string(40, ' ') << "\n";
-}
-
-// Utility to print current status block (state, engine, fails)
-void printStatus() { \ // central status output
-    lock_guard<mutex> lock(stateMutex); \ // lock shared state
-    cout << "\n========== CAR SECURITY SYSTEM ==========\n"; \ // header
-    cout << "State: "; \ // label
-    if (state == LOCKED) { setConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY); cout << "LOCKED\n"; } \ // locked red
-    else if (state == UNLOCKED) { setConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY); cout << "UNLOCKED\n"; } \ // unlocked green
-    else if (state == VALET) { setConsoleColor(FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY); cout << "VALET MODE\n"; } \ // valet orange
-    else if (state == COOLDOWN) { setConsoleColor(FOREGROUND_RED); cout << "COOLDOWN\n"; } \ // cooldown
-    if (engineOn) { setConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY); cout << "Engine: ON\n"; } else { setConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY); cout << "Engine: OFF\n"; } \ // engine line
-    setConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY);
-    cout << "Failed attempts: " << failedAttempts << "/2\n"; \ // failed attempts
-    setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE); \ // reset
-}
-
-// function to safely change state with logging and optional delay (transition)
-void changeState(SystemState newState, const string &reason = "", int delayMs = 300) { \ // change state with optional delay
-    {
-        lock_guard<mutex> lock(stateMutex); \ // protect state
-        state = newState; \ // assign new state
+    .overlay {
+      background: rgba(0, 0, 0, 0.82);
+      padding: 24px 20px;
+      border-radius: 18px;
+      width: min(420px, 100% - 32px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
-    if (!reason.empty()) { logEvent("State changed to " + to_string((int)newState) + " : " + reason); } \ // log
-    this_thread::sleep_for(chrono::milliseconds(delayMs)); \ // small transition delay
-}
 
-// main program
-int main() { \ // program entry
-    // open log file
-    logFile.open("events.log", ios::app); \ // open log file append
-    logEvent("Program started"); \ // log start
+    .title {
+      text-align: center;
+      font-size: 20px;
+      margin-bottom: 6px;
+      color: #fff;
+    }
 
-    // start blink indicator thread
-    thread blinkThread(blinkIndicator); \ // spawn background thread
-    blinkThread.detach(); \ // detach so it runs independently
+    .subtitle {
+      text-align: center;
+      font-size: 12px;
+      color: #bbbbbb;
+      margin-bottom: 14px;
+    }
 
-    while (true) { \ // main loop
-        // auto-lock check
-        time_t now = time(NULL); \ // current time
-        double inactiveSeconds = difftime(now, lastActivity); \ // inactivity time
-        if (inactiveSeconds >= 60) { \ // if idle 60s or more
-            {
-                lock_guard<mutex> lock(stateMutex); \ // lock state
-                state = LOCKED; \ // lock
-                engineOn = false; \ // engine off
-                failedAttempts = 0; \ // reset fails
-            }
-            logEvent("Auto-lock triggered due to inactivity"); \ // log event
-            cout << "\n[Auto-Lock] 60 seconds inactivity. System locked.\n"; \ // message
-        }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      background: #1f1f1f;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
 
-        // display dashboard and panels
-        asciiDashboard(); \ // show ascii car
-        printStatus(); \ // show status
-        enginePanel(engineOn); \ // colored engine panel
+    button {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 6px;
+      background: #272727;
+      color: #fff;
+      transition: background 0.15s, transform 0.1s;
+    }
 
-        if (state == COOLDOWN) { \ // if cooling down
-            cout << "System in cooldown. Please wait.\n"; \ // inform
-            this_thread::sleep_for(chrono::milliseconds(500)); \ // small sleep to avoid busy loop
-            continue; \ // skip input
-        }
+    button:hover {
+      background: #353535;
+      transform: translateY(-1px);
+    }
 
-        // prompt user
-        setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE); \ // white
-        cout << "\nEnter passcode (or 'exit' to quit): "; \ // prompt
-        string input; \ // read line
-        getline(cin, input); \ // get input
-        lastActivity = time(NULL); \ // reset inactivity timer
+    button:active {
+      transform: translateY(0);
+    }
 
-        if (input == "exit") { \ // quit
-            logEvent("User exited program"); \ // log
-            break; \ // exit loop
-        }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 4px;
+    }
 
-        // validate format
-        string reason; \ // reason for invalid
-        if (!isValidCode(input, reason)) { \ // stronger validation
-            setConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY); \ // red text
-            cout << "Invalid code: " << reason << "\n"; \ // show reason
-            logEvent("Validation failed: " + reason + " for input: " + input); \ // log
-            continue; \ // ask again
-        }
+    .status-card {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #111111;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: #eee;
+      font-size: 13px;
+    }
 
-        // match codes
-        if (input == masterCode) { \ // correct master code
-            logEvent("Master code accepted"); \ // log
-            loadingBar("Engine start", 1000); \ // show loading
-            {
-                lock_guard<mutex> lock(stateMutex); \ // protect changes
-                state = UNLOCKED; \ // state unlocked
-                engineOn = true; \ // engine on
-                failedAttempts = 0; \ // reset fails
-            }
-            changeState(UNLOCKED, "Master code entered", 200); \ // transition
-            setConsoleColor(FOREGROUND_GREEN | FOREGROUND_INTENSITY); \ // green success
-            cout << "Master code accepted! System UNLOCKED. Engine ON.\n"; \ // message
-        } else if (input == valetCode) { \ // valet code
-            logEvent("Valet code accepted"); \ // log
-            loadingBar("Entering valet mode", 800); \ // loading
-            {
-                lock_guard<mutex> lock(stateMutex); \ // protect
-                state = VALET; \ // valet state
-                engineOn = false; \ // engine off
-                failedAttempts = 0; \ // reset fails
-            }
-            changeState(VALET, "Valet code entered", 200); \ // transition
-            setConsoleColor(FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY); \ // orange
-            cout << "Valet code accepted! Valet MODE active. Engine OFF.\n"; \ // message
-        } else { \ // wrong code
-            failedAttempts++; \ // increment
-            setConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY); \ // red
-            cout << "Invalid code! (" << failedAttempts << "/2 attempts)\n"; \ // show attempts
-            logEvent("Invalid code attempt: " + input); \ // log
-            if (failedAttempts >= 2) { \ // enter cooldown
-                {
-                    lock_guard<mutex> lock(stateMutex); \ // protect
-                    state = COOLDOWN; \ // set cooldown
-                }
-                cout << "Too many failed attempts! System in COOLDOWN for 10 seconds.\n"; \ // message
-                logEvent("Entering COOLDOWN for 10 seconds"); \ // log
-                auto cooldownStart = chrono::steady_clock::now(); \ // start time
-                while (chrono::duration_cast<chrono::seconds>(chrono::steady_clock::now() - cooldownStart).count() < 10) { \ // wait loop
-                    this_thread::sleep_for(chrono::milliseconds(200)); \ // yield
-                }
-                {
-                    lock_guard<mutex> lock(stateMutex); \ // protect
-                    state = LOCKED; \ // back to locked
-                    failedAttempts = 0; \ // reset
-                    engineOn = false; \ // ensure engine off
-                }
-                logEvent("Cooldown complete"); \ // log
-                setConsoleColor(FOREGROUND_RED | FOREGROUND_INTENSITY); \ // red
-                cout << "Cooldown complete. System ready.\n"; \ // notify
-            }
-        }
-    } // end main loop
+    .status-line {
+      margin-top: 4px;
+    }
 
-    // cleanup
-    stopBlinkThread = true; \ // signal blink thread to stop
-    this_thread::sleep_for(chrono::milliseconds(300)); \ // small wait
-    logEvent("Program terminated"); \ // final log
-    if (logFile.is_open()) logFile.close(); \ // close log file
-    setConsoleColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE); \ // reset color
-    cout << "Goodbye.\n"; \ // farewell
-    return 0; \ // exit code
-}
+    .label {
+      color: #888888;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
 
+    .value {
+      font-size: 14px;
+      margin-top: 2px;
+    }
+
+    .engine-ui {
+      display: flex;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .engine-light {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-right: 8px;
+      background: #700000;
+      box-shadow: 0 0 6px rgba(255, 0, 0, 0.4);
+      transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+
+    .engine-on {
+      background: #00c853;
+      box-shadow: 0 0 10px rgba(0, 200, 83, 0.7);
+    }
+
+    .blink-off {
+      opacity: 0.25;
+      box-shadow: none;
+    }
+
+    .engine-text-on {
+      color: #00e676;
+    }
+
+    .engine-text-off {
+      color: #ff5252;
+    }
+
+    .alert {
+      margin-top: 10px;
+      min-height: 20px;
+      font-size: 13px;
+    }
+
+    .alert-success {
+      color: #4caf50;
+    }
+
+    .alert-error {
+      color: #f44336;
+    }
+
+    .small {
+      font-size: 11px;
+      color: #777;
+      margin-top: 8px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+<div class="overlay">
+  <div class="title">Car Security System</div>
+  <div class="subtitle">Master, Valet, Cooldown, Auto-lock</div>
+
+  <input id="passInput" placeholder="Enter passcode">
+
+  <button id="unlockBtn">Unlock / Validate</button>
+
+  <div class="row">
+    <button id="startBtn">Start Engine</button>
+    <button id="lockBtn">Lock</button>
+  </div>
+
+  <button id="valetBtn">Valet Mode</button>
+
+  <div class="status-card">
+    <div class="status-line">
+      <div class="label">State</div>
+      <div class="value" id="stateText">LOCKED</div>
+    </div>
+
+    <div class="status-line engine-ui">
+      <div class="engine-light" id="engineLight"></div>
+      <div class="value" id="engineText" class="engine-text-off">Engine Off</div>
+    </div>
+
+    <div class="status-line">
+      <div class="label">Fails</div>
+      <div class="value" id="failsText">0 / 2</div>
+    </div>
+
+    <div class="status-line">
+      <div class="label">Cooldown</div>
+      <div class="value" id="cooldownText">Inactive</div>
+    </div>
+  </div>
+
+  <div id="alert" class="alert"></div>
+  <div class="small">Auto lock after 60 seconds of no input</div>
+</div>
+
+<script>
+  // codes
+  const MASTER_CODE = "1R2A";
+  const VALET_CODE = "123A";
+
+  // state
+  let state = "LOCKED";
+  let engineOn = false;
+  let failed = 0;
+  let cooldown = false;
+  let cooldownTimer = null;
+  let inactivityTimer = null;
+
+  const INACTIVITY_LIMIT = 60000; // 60 sec
+
+  // elements
+  const passInput = document.getElementById("passInput");
+  const unlockBtn = document.getElementById("unlockBtn");
+  const startBtn = document.getElementById("startBtn");
+  const lockBtn = document.getElementById("lockBtn");
+  const valetBtn = document.getElementById("valetBtn");
+
+  const stateText = document.getElementById("stateText");
+  const engineText = document.getElementById("engineText");
+  const engineLight = document.getElementById("engineLight");
+  const failsText = document.getElementById("failsText");
+  const cooldownText = document.getElementById("cooldownText");
+  const alertBox = document.getElementById("alert");
+
+  function setAlert(message, type) {
+    alertBox.textContent = message;
+    alertBox.className = "alert";
+    if (type === "success") {
+      alertBox.classList.add("alert-success");
+    } else if (type === "error") {
+      alertBox.classList.add("alert-error");
+    }
+  }
+
+  function resetInactivity() {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+      state = "LOCKED";
+      engineOn = false;
+      failed = 0;
+      setAlert("Auto locked after 60 seconds of inactivity", "error");
+      updateUI();
+    }, INACTIVITY_LIMIT);
+  }
+
+  function validateCodeFormat(code) {
+    if (code.length < 4 || code.length > 8) {
+      setAlert("Code must be 4–8 characters", "error");
+      return false;
+    }
+    if (!/^[A-Za-z0-9]+$/.test(code)) {
+      setAlert("Letters and numbers only", "error");
+      return false;
+    }
+    if (!/[A-Za-z]/.test(code) || !/[0-9]/.test(code)) {
+      setAlert("Must contain at least one letter and one digit", "error");
+      return false;
+    }
+    return true;
+  }
+
+  function updateUI() {
+    stateText.textContent = state;
+    failsText.textContent = failed + " / 2";
+
+    if (cooldown) {
+      cooldownText.textContent = "Active";
+    } else {
+      cooldownText.textContent = "Inactive";
+    }
+
+    if (engineOn) {
+      engineText.textContent = "Engine On";
+      engineText.classList.remove("engine-text-off");
+      engineText.classList.add("engine-text-on");
+      engineLight.classList.add("engine-on");
+    } else {
+      engineText.textContent = "Engine Off";
+      engineText.classList.remove("engine-text-on");
+      engineText.classList.add("engine-text-off");
+      engineLight.classList.remove("engine-on");
+      engineLight.classList.remove("blink-off");
+    }
+  }
+
+  function handleFailedAttempt() {
+    failed++;
+    setAlert("Invalid passcode (" + failed + "/2)", "error");
+    if (failed >= 2) {
+      startCooldown();
+    }
+  }
+
+  function startCooldown() {
+    cooldown = true;
+    state = "COOLDOWN";
+    let remaining = 10;
+    updateUI();
+    setAlert("Cooldown " + remaining + " sec", "error");
+
+    if (cooldownTimer) clearInterval(cooldownTimer);
+    cooldownTimer = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        clearInterval(cooldownTimer);
+        cooldownTimer = null;
+        cooldown = false;
+        state = "LOCKED";
+        failed = 0;
+        setAlert("Cooldown ended. System locked", "success");
+        updateUI();
+      } else {
+        setAlert("Cooldown " + remaining + " sec", "error");
+      }
+    }, 1000);
+  }
+
+  function unlockHandler() {
+    if (cooldown) {
+      setAlert("Cooldown active. Wait a few seconds", "error");
+      return;
+    }
+    const code = passInput.value.trim();
+    if (!validateCodeFormat(code)) {
+      failed++;
+      if (failed >= 2) startCooldown();
+      updateUI();
+      resetInactivity();
+      return;
+    }
+
+    if (code === MASTER_CODE) {
+      state = "UNLOCKED";
+      engineOn = true;
+      failed = 0;
+      setAlert("Master code accepted. Engine running", "success");
+    } else if (code === VALET_CODE) {
+      state = "VALET";
+      engineOn = false;
+      failed = 0;
+      setAlert("Valet code accepted. Valet mode active", "success");
+    } else {
+      handleFailedAttempt();
+    }
+    updateUI();
+    resetInactivity();
+  }
+
+  function startEngineHandler() {
+    if (state === "UNLOCKED" || state === "VALET") {
+      engineOn = true;
+      setAlert("Engine started", "success");
+    } else {
+      setAlert("Unlock or valet first", "error");
+    }
+    updateUI();
+    resetInactivity();
+  }
+
+  function lockHandler() {
+    state = "LOCKED";
+    engineOn = false;
+    setAlert("Car locked", "success");
+    updateUI();
+    resetInactivity();
+  }
+
+  function valetHandler() {
+    const code = passInput.value.trim();
+    if (!validateCodeFormat(code)) {
+      failed++;
+      if (failed >= 2) startCooldown();
+      updateUI();
+      resetInactivity();
+      return;
+    }
+    if (code === VALET_CODE) {
+      state = "VALET";
+      engineOn = false;
+      failed = 0;
+      setAlert("Valet mode active", "success");
+    } else {
+      handleFailedAttempt();
+    }
+    updateUI();
+    resetInactivity();
+  }
+
+  // blinking light loop
+  setInterval(() => {
+    if (engineOn) {
+      engineLight.classList.toggle("blink-off");
+    } else {
+      engineLight.classList.remove("blink-off");
+    }
+  }, 500);
+
+  unlockBtn.addEventListener("click", unlockHandler);
+  startBtn.addEventListener("click", startEngineHandler);
+  lockBtn.addEventListener("click", lockHandler);
+  valetBtn.addEventListener("click", valetHandler);
+  passInput.addEventListener("input", resetInactivity);
+
+  updateUI();
+  resetInactivity();
+</script>
+
+</body>
+</html>
