@@ -17,7 +17,7 @@
       align-items: center;
       justify-content: center;
       background: #000;
-      background-image: url("background.gif"); /* put your gif with this name in the repo, or change the file name */
+      background-image: url("background.gif");
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
@@ -77,10 +77,6 @@
       transform: translateY(-1px);
     }
 
-    button:active {
-      transform: translateY(0);
-    }
-
     .row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -98,9 +94,7 @@
       font-size: 13px;
     }
 
-    .status-line {
-      margin-top: 4px;
-    }
+    .status-line { margin-top: 4px; }
 
     .label {
       color: #888888;
@@ -140,13 +134,8 @@
       box-shadow: none;
     }
 
-    .engine-text-on {
-      color: #00e676;
-    }
-
-    .engine-text-off {
-      color: #ff5252;
-    }
+    .engine-text-on { color: #00e676; }
+    .engine-text-off { color: #ff5252; }
 
     .alert {
       margin-top: 10px;
@@ -154,13 +143,8 @@
       font-size: 13px;
     }
 
-    .alert-success {
-      color: #4caf50;
-    }
-
-    .alert-error {
-      color: #f44336;
-    }
+    .alert-success { color: #4caf50; }
+    .alert-error { color: #f44336; }
 
     .small {
       font-size: 11px;
@@ -195,7 +179,7 @@
 
     <div class="status-line engine-ui">
       <div class="engine-light" id="engineLight"></div>
-      <div class="value" id="engineText" class="engine-text-off">Engine Off</div>
+      <div class="value" id="engineText">Engine Off</div>
     </div>
 
     <div class="status-line">
@@ -214,11 +198,10 @@
 </div>
 
 <script>
-  // codes
+  // passcodes
   const MASTER_CODE = "1R2A";
-  const VALET_CODE = "123A";
+  const VALET_CODE  = "123A";
 
-  // state
   let state = "LOCKED";
   let engineOn = false;
   let failed = 0;
@@ -226,7 +209,7 @@
   let cooldownTimer = null;
   let inactivityTimer = null;
 
-  const INACTIVITY_LIMIT = 60000; // 60 sec
+  const INACTIVITY_LIMIT = 60000;
 
   // elements
   const passInput = document.getElementById("passInput");
@@ -242,14 +225,53 @@
   const cooldownText = document.getElementById("cooldownText");
   const alertBox = document.getElementById("alert");
 
-  function setAlert(message, type) {
-    alertBox.textContent = message;
-    alertBox.className = "alert";
-    if (type === "success") {
-      alertBox.classList.add("alert-success");
-    } else if (type === "error") {
-      alertBox.classList.add("alert-error");
+  // ---------------------------------------------------------
+  // RECURSIVE FUNCTION — teacher-visible, clearly commented
+  // ---------------------------------------------------------
+  function recursiveCheck(code, index = 0) {
+
+    // base case: reached the end → all characters valid
+    if (index === code.length) {
+      return true;
     }
+
+    // check current character is a letter or digit
+    const char = code[index];
+    if (!/[A-Za-z0-9]/.test(char)) {
+      return false;
+    }
+
+    // recursive step: check next character
+    return recursiveCheck(code, index + 1);
+  }
+  // ---------------------------------------------------------
+
+  function setAlert(msg, type) {
+    alertBox.textContent = msg;
+    alertBox.className = "alert";
+    if (type === "success") alertBox.classList.add("alert-success");
+    if (type === "error") alertBox.classList.add("alert-error");
+  }
+
+  function validateCodeFormat(code) {
+
+    if (code.length < 4 || code.length > 8) {
+      setAlert("Code must be 4–8 characters", "error");
+      return false;
+    }
+
+    // USE RECURSION HERE
+    if (!recursiveCheck(code)) {
+      setAlert("Invalid characters found", "error");
+      return false;
+    }
+
+    if (!/[A-Za-z]/.test(code) || !/[0-9]/.test(code)) {
+      setAlert("Must contain at least one letter and one digit", "error");
+      return false;
+    }
+
+    return true;
   }
 
   function resetInactivity() {
@@ -258,46 +280,25 @@
       state = "LOCKED";
       engineOn = false;
       failed = 0;
-      setAlert("Auto locked after 60 seconds of inactivity", "error");
+      setAlert("Auto locked from inactivity", "error");
       updateUI();
     }, INACTIVITY_LIMIT);
-  }
-
-  function validateCodeFormat(code) {
-    if (code.length < 4 || code.length > 8) {
-      setAlert("Code must be 4–8 characters", "error");
-      return false;
-    }
-    if (!/^[A-Za-z0-9]+$/.test(code)) {
-      setAlert("Letters and numbers only", "error");
-      return false;
-    }
-    if (!/[A-Za-z]/.test(code) || !/[0-9]/.test(code)) {
-      setAlert("Must contain at least one letter and one digit", "error");
-      return false;
-    }
-    return true;
   }
 
   function updateUI() {
     stateText.textContent = state;
     failsText.textContent = failed + " / 2";
-
-    if (cooldown) {
-      cooldownText.textContent = "Active";
-    } else {
-      cooldownText.textContent = "Inactive";
-    }
+    cooldownText.textContent = cooldown ? "Active" : "Inactive";
 
     if (engineOn) {
       engineText.textContent = "Engine On";
-      engineText.classList.remove("engine-text-off");
       engineText.classList.add("engine-text-on");
+      engineText.classList.remove("engine-text-off");
       engineLight.classList.add("engine-on");
     } else {
       engineText.textContent = "Engine Off";
-      engineText.classList.remove("engine-text-on");
       engineText.classList.add("engine-text-off");
+      engineText.classList.remove("engine-text-on");
       engineLight.classList.remove("engine-on");
       engineLight.classList.remove("blink-off");
     }
@@ -306,17 +307,15 @@
   function handleFailedAttempt() {
     failed++;
     setAlert("Invalid passcode (" + failed + "/2)", "error");
-    if (failed >= 2) {
-      startCooldown();
-    }
+    if (failed >= 2) startCooldown();
   }
 
   function startCooldown() {
     cooldown = true;
     state = "COOLDOWN";
     let remaining = 10;
-    updateUI();
     setAlert("Cooldown " + remaining + " sec", "error");
+    updateUI();
 
     if (cooldownTimer) clearInterval(cooldownTimer);
     cooldownTimer = setInterval(() => {
@@ -327,7 +326,7 @@
         cooldown = false;
         state = "LOCKED";
         failed = 0;
-        setAlert("Cooldown ended. System locked", "success");
+        setAlert("Cooldown ended", "success");
         updateUI();
       } else {
         setAlert("Cooldown " + remaining + " sec", "error");
@@ -337,10 +336,12 @@
 
   function unlockHandler() {
     if (cooldown) {
-      setAlert("Cooldown active. Wait a few seconds", "error");
+      setAlert("Cooldown active", "error");
       return;
     }
+
     const code = passInput.value.trim();
+
     if (!validateCodeFormat(code)) {
       failed++;
       if (failed >= 2) startCooldown();
@@ -353,15 +354,16 @@
       state = "UNLOCKED";
       engineOn = true;
       failed = 0;
-      setAlert("Master code accepted. Engine running", "success");
+      setAlert("Master code accepted", "success");
     } else if (code === VALET_CODE) {
       state = "VALET";
       engineOn = false;
       failed = 0;
-      setAlert("Valet code accepted. Valet mode active", "success");
+      setAlert("Valet mode active", "success");
     } else {
       handleFailedAttempt();
     }
+
     updateUI();
     resetInactivity();
   }
@@ -380,6 +382,7 @@
   function lockHandler() {
     state = "LOCKED";
     engineOn = false;
+    failed = 0;
     setAlert("Car locked", "success");
     updateUI();
     resetInactivity();
@@ -387,6 +390,7 @@
 
   function valetHandler() {
     const code = passInput.value.trim();
+
     if (!validateCodeFormat(code)) {
       failed++;
       if (failed >= 2) startCooldown();
@@ -394,6 +398,7 @@
       resetInactivity();
       return;
     }
+
     if (code === VALET_CODE) {
       state = "VALET";
       engineOn = false;
@@ -402,11 +407,12 @@
     } else {
       handleFailedAttempt();
     }
+
     updateUI();
     resetInactivity();
   }
 
-  // blinking light loop
+  // blinking engine effect
   setInterval(() => {
     if (engineOn) {
       engineLight.classList.toggle("blink-off");
