@@ -1,958 +1,377 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Car Security System</title>
-  <style>
-    :root{
-      --bg0:#07070a;
-      --bg1:#0c0c12;
-      --card:#0e0f16cc;
-      --stroke:#ffffff14;
-      --text:#ffffff;
-      --muted:#b9b9c6;
-      --red:#ff3b30;
-      --green:#34c759;
-      --yellow:#ffcc00;
-      --blue:#0a84ff;
-    }
+<meta charset="UTF-8">
+<title>Car Security System</title>
 
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{height:100%}
-    body{
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background: #000;
-      overflow-x:hidden;
-    }
+<style>
+:root{
+  --bg1:#02040f;
+  --bg2:#0a0f2c;
+  --card:#0b1020cc;
+  --stroke:#ffffff1a;
+  --red:#ff3b30;
+  --green:#34c759;
+  --yellow:#ffcc00;
+  --blue:#0a84ff;
+  --text:#ffffff;
+  --muted:#b0b4d4;
+}
 
-    .bg{
-      position:fixed; inset:0;
-      background:
-        radial-gradient(1200px 600px at 20% 20%, #1730ff22, transparent 60%),
-        radial-gradient(900px 500px at 85% 30%, #00ffcc18, transparent 65%),
-        radial-gradient(900px 500px at 60% 95%, #ff3b3012, transparent 60%),
-        linear-gradient(180deg, var(--bg0), var(--bg1));
-      z-index:-3;
-    }
+*{margin:0;padding:0;box-sizing:border-box}
 
-    .gif{
-      position:fixed; inset:0;
-      background-image:url("background.gif");
-      background-size:cover;
-      background-position:center;
-      filter:saturate(1.05) contrast(1.05);
-      opacity:.22;
-      z-index:-4;
-    }
+body{
+  font-family:system-ui,Arial;
+  color:var(--text);
+  min-height:100vh;
+  overflow:hidden;
+}
 
-    .shade{
-      position:fixed; inset:0;
-      background: linear-gradient(180deg, #00000090, #000000c0);
-      z-index:-2;
-    }
+/* MOVING BACKGROUND */
+.bg{
+  position:fixed;
+  inset:0;
+  background:
+    linear-gradient(120deg,var(--bg1),var(--bg2),var(--bg1));
+  background-size:400% 400%;
+  animation:bgMove 18s ease infinite;
+  z-index:-3;
+}
+@keyframes bgMove{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
 
-    .wrap{
-      min-height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
-    }
+.blur{
+  position:fixed;
+  inset:0;
+  backdrop-filter:blur(40px);
+  background:#00000090;
+  z-index:-2;
+}
 
-    .grid{
-      width:min(1040px, 100%);
-      display:grid;
-      grid-template-columns: 1.15fr .85fr;
-      gap:18px;
-    }
+.wrap{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
 
-    @media (max-width: 900px){
-      .grid{grid-template-columns:1fr}
-    }
+.card{
+  width:min(960px,100%);
+  background:var(--card);
+  border:1px solid var(--stroke);
+  border-radius:22px;
+  box-shadow:0 30px 80px #000;
+  padding:22px;
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:18px;
+}
 
-    .card{
-      background: var(--card);
-      border: 1px solid var(--stroke);
-      border-radius: 20px;
-      box-shadow: 0 25px 70px #00000080;
-      overflow:hidden;
-      position:relative;
-    }
+@media(max-width:850px){
+  .card{grid-template-columns:1fr}
+}
 
-    .topbar{
-      padding:18px 18px 12px 18px;
-      border-bottom:1px solid var(--stroke);
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-    }
+h1{
+  font-size:20px;
+  margin-bottom:6px;
+}
+.sub{
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:14px;
+}
 
-    .title{
-      font-size:18px;
-      line-height:1.2;
-      letter-spacing:.2px;
-    }
+input,button{
+  width:100%;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid var(--stroke);
+  background:#0a0e1f;
+  color:#fff;
+  font-size:14px;
+}
 
-    .sub{
-      margin-top:6px;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.4;
-    }
+button{
+  cursor:pointer;
+  transition:.15s;
+}
+button:hover{transform:translateY(-1px)}
 
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border:1px solid var(--stroke);
-      border-radius:999px;
-      background:#0b0c1280;
-      font-size:12px;
-      color:var(--muted);
-      white-space:nowrap;
-    }
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-    .dot{
-      width:10px;height:10px;border-radius:50%;
-      background: var(--red);
-      box-shadow: 0 0 14px #ff3b3070;
-    }
+.panel{
+  border:1px solid var(--stroke);
+  border-radius:18px;
+  padding:14px;
+  background:#080b18cc;
+}
 
-    .dot.green{background:var(--green); box-shadow:0 0 14px #34c75970}
-    .dot.yellow{background:var(--yellow); box-shadow:0 0 14px #ffcc0070}
+.label{
+  font-size:11px;
+  color:var(--muted);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
 
-    .main{
-      padding:16px 18px 18px 18px;
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:14px;
-    }
+.value{margin-top:4px;font-size:15px}
 
-    .row{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-    }
+.engine{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-top:10px;
+}
 
-    @media (max-width: 520px){
-      .row{grid-template-columns:1fr}
-    }
+.light{
+  width:14px;height:14px;border-radius:50%;
+  background:var(--red);
+  box-shadow:0 0 14px var(--red);
+}
 
-    .input{
-      width:100%;
-      padding:12px 12px;
-      background:#0b0c12;
-      border:1px solid var(--stroke);
-      border-radius:12px;
-      color:#fff;
-      outline:none;
-      font-size:14px;
-      letter-spacing:.5px;
-    }
+.on{background:var(--green);box-shadow:0 0 16px var(--green)}
+.valet{background:var(--yellow);box-shadow:0 0 16px var(--yellow)}
 
-    .input:focus{
-      border-color:#ffffff2a;
-      box-shadow: 0 0 0 3px #0a84ff22;
-    }
+.alert{margin-top:10px;font-size:13px;min-height:20px}
+.ok{color:var(--green)}
+.bad{color:var(--red)}
+.warn{color:var(--yellow)}
 
-    .btn{
-      width:100%;
-      padding:12px 12px;
-      border-radius:14px;
-      border:1px solid var(--stroke);
-      background:#0b0c12;
-      color:#fff;
-      font-size:14px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-      user-select:none;
-    }
+.log{
+  max-height:260px;
+  overflow:auto;
+  border:1px solid var(--stroke);
+  border-radius:14px;
+  background:#050713;
+}
 
-    .btn:hover{transform: translateY(-1px); border-color:#ffffff22}
-    .btn:active{transform: translateY(0px)}
-    .btn.primary{background:#0a84ff22; border-color:#0a84ff44}
-    .btn.danger{background:#ff3b3018; border-color:#ff3b3038}
-    .btn.good{background:#34c7591a; border-color:#34c7593a}
-    .btn.warn{background:#ffcc0014; border-color:#ffcc0033}
+.log div{
+  padding:10px;
+  border-bottom:1px solid #ffffff0f;
+  font-size:12px;
+}
 
-    .panel{
-      border:1px solid var(--stroke);
-      background:#090a10b8;
-      border-radius:16px;
-      padding:14px;
-    }
-
-    .panelHead{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      margin-bottom:10px;
-    }
-
-    .label{
-      font-size:11px;
-      letter-spacing:.12em;
-      color:#a7a7b8;
-      text-transform:uppercase;
-    }
-
-    .big{
-      font-size:15px;
-      margin-top:3px;
-    }
-
-    .kpis{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-      margin-top:10px;
-    }
-
-    .kpi{
-      border:1px solid var(--stroke);
-      background:#0b0c12a6;
-      border-radius:14px;
-      padding:12px;
-    }
-
-    .kpiVal{
-      font-size:16px;
-      margin-top:6px;
-    }
-
-    .engineBox{
-      border:1px solid var(--stroke);
-      background:#0b0c12a6;
-      border-radius:16px;
-      padding:12px;
-      margin-top:10px;
-    }
-
-    .engineRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-
-    .engineText{
-      font-size:14px;
-      color:var(--muted);
-    }
-
-    .engineState{
-      font-size:15px;
-      letter-spacing:.4px;
-    }
-
-    .engineState.on{color:var(--green)}
-    .engineState.off{color:var(--red)}
-    .engineState.valet{color:var(--yellow)}
-
-    .light{
-      width:14px;height:14px;border-radius:50%;
-      background:var(--red);
-      box-shadow:0 0 16px #ff3b3068;
-      transition: opacity .12s ease;
-      flex:0 0 auto;
-    }
-    .light.on{background:var(--green); box-shadow:0 0 16px #34c75968}
-    .light.valet{background:var(--yellow); box-shadow:0 0 16px #ffcc0068}
-    .blinkOff{opacity:.25; box-shadow:none}
-
-    .grade{
-      margin-top:10px;
-      border-radius:14px;
-      overflow:hidden;
-      border:1px solid var(--stroke);
-      background:#07070a;
-    }
-
-    .gradeBar{
-      height:12px;
-      background: linear-gradient(90deg, #ff3b30, #ffcc00, #34c759);
-      opacity:.95;
-    }
-
-    .gradeMeta{
-      display:flex;
-      justify-content:space-between;
-      padding:10px 10px;
-      font-size:12px;
-      color:var(--muted);
-      border-top:1px solid var(--stroke);
-      background:#0b0c12b0;
-    }
-
-    .alert{
-      min-height:22px;
-      font-size:13px;
-      line-height:1.4;
-    }
-    .ok{color:var(--green)}
-    .bad{color:var(--red)}
-    .info{color:#c8c8d8}
-    .warnTxt{color:var(--yellow)}
-
-    .loaderWrap{
-      height:10px;
-      border-radius:999px;
-      background:#ffffff10;
-      overflow:hidden;
-      border:1px solid var(--stroke);
-      display:none;
-    }
-    .loader{
-      height:100%;
-      width:0%;
-      background: linear-gradient(90deg, #0a84ff, #34c759);
-      transition: width .08s linear;
-    }
-
-    .side{
-      padding:18px;
-      display:grid;
-      gap:14px;
-    }
-
-    .logBox{
-      border:1px solid var(--stroke);
-      background:#0b0c12a6;
-      border-radius:16px;
-      padding:12px;
-      display:grid;
-      gap:10px;
-    }
-
-    .logList{
-      max-height:280px;
-      overflow:auto;
-      border:1px solid var(--stroke);
-      border-radius:12px;
-      background:#07070a;
-    }
-
-    .logItem{
-      padding:10px 10px;
-      border-bottom:1px solid #ffffff0f;
-      font-size:12px;
-      color:#d7d7e6;
-      line-height:1.35;
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-    }
-
-    .logItem:last-child{border-bottom:none}
-    .t{color:#9e9eb1; flex:0 0 auto}
-    .m{color:#eaeafd; flex:1 1 auto}
-    .tag{
-      flex:0 0 auto;
-      border:1px solid #ffffff18;
-      border-radius:999px;
-      padding:2px 8px;
-      font-size:11px;
-      color:#cfcfe0;
-      background:#ffffff08;
-      white-space:nowrap;
-    }
-
-    .tag.ok{border-color:#34c75955; background:#34c75918; color:#a7ffbf}
-    .tag.bad{border-color:#ff3b3055; background:#ff3b3018; color:#ffb3ad}
-    .tag.warn{border-color:#ffcc0055; background:#ffcc0014; color:#ffeaa7}
-    .tag.info{border-color:#0a84ff55; background:#0a84ff18; color:#b6dcff}
-
-    .foot{
-      font-size:12px;
-      color:#a7a7b8;
-      line-height:1.45;
-      border:1px solid var(--stroke);
-      border-radius:16px;
-      background:#0b0c12a6;
-      padding:12px;
-    }
-
-    .mono{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      letter-spacing:.2px;
-    }
-  </style>
+small{font-size:11px;color:var(--muted)}
+</style>
 </head>
+
 <body>
-  <div class="gif"></div>
-  <div class="bg"></div>
-  <div class="shade"></div>
+<div class="bg"></div>
+<div class="blur"></div>
 
-  <div class="wrap">
-    <div class="grid">
-      <div class="card">
-        <div class="topbar">
-          <div>
-            <div class="title">Car Security System</div>
-            <div class="sub">Master, Valet, Cooldown, Auto Lock, Recursion, Event Log</div>
-          </div>
-          <div class="pill">
-            <span id="stateDot" class="dot"></span>
-            <span id="statePill" class="mono">LOCKED</span>
-          </div>
-        </div>
+<div class="wrap">
+<div class="card">
 
-        <div class="main">
-          <div class="panel">
-            <div class="panelHead">
-              <div>
-                <div class="label">Passcode Input</div>
-                <div class="big mono" id="ruleText">Rules 4–8 chars, letters and digits, recursion checks every char</div>
-              </div>
-              <div class="pill">
-                <span class="mono" id="timerText">Inactivity 60s</span>
-              </div>
-            </div>
+<!-- LEFT -->
+<div>
+<h1>Car Security System</h1>
+<div class="sub">Auto-Lock • Cooldown • Recursion • User Password Control</div>
 
-            <input id="passInput" class="input mono" placeholder="Type passcode" autocomplete="off" />
+<input id="code" placeholder="Enter passcode">
 
-            <div class="row">
-              <button id="unlockBtn" class="btn primary">Unlock Validate</button>
-              <button id="valetBtn" class="btn warn">Valet Mode</button>
-            </div>
+<div class="row">
+<button onclick="unlock()">Unlock</button>
+<button onclick="startEngine()">Start Engine</button>
+</div>
 
-            <div class="row">
-              <button id="startBtn" class="btn good">Start Engine</button>
-              <button id="lockBtn" class="btn danger">Lock</button>
-            </div>
+<div class="row">
+<button onclick="lockSys()">Lock</button>
+<button onclick="valetMode()">Valet</button>
+</div>
 
-            <div style="margin-top:10px">
-              <div class="loaderWrap" id="loaderWrap"><div class="loader" id="loaderBar"></div></div>
-              <div class="alert" id="alert"></div>
-            </div>
+<div class="alert" id="msg"></div>
 
-            <div class="kpis">
-              <div class="kpi">
-                <div class="label">Failed Attempts</div>
-                <div class="kpiVal mono" id="failsText">0 / 2</div>
-              </div>
-              <div class="kpi">
-                <div class="label">Cooldown</div>
-                <div class="kpiVal mono" id="cooldownText">Inactive</div>
-              </div>
-            </div>
+<div class="panel">
+<div class="label">Status</div>
+<div class="value" id="state">LOCKED</div>
 
-            <div class="engineBox">
-              <div class="engineRow">
-                <div style="display:flex;align-items:center;gap:10px">
-                  <span id="engineLight" class="light"></span>
-                  <div>
-                    <div class="label">Engine Display</div>
-                    <div id="engineState" class="engineState off mono">OFF</div>
-                  </div>
-                </div>
-                <div class="engineText mono" id="engineHint">Locked</div>
-              </div>
+<div class="engine">
+<div class="light" id="light"></div>
+<div id="engineText">ENGINE OFF</div>
+</div>
 
-              <div class="grade">
-                <div class="gradeBar"></div>
-                <div class="gradeMeta">
-                  <span class="mono">RED</span>
-                  <span class="mono">YELLOW</span>
-                  <span class="mono">GREEN</span>
-                </div>
-              </div>
-            </div>
-          </div>
+<div class="value">Fails: <span id="fails">0</span>/2</div>
+</div>
 
-          <div class="panel">
-            <div class="label">Demo Codes</div>
-            <div class="big mono">Master 1R2A</div>
-            <div class="big mono">Valet 123A</div>
-            <div class="sub" style="margin-top:10px">Change codes inside script if needed</div>
-          </div>
-        </div>
-      </div>
+<div class="panel">
+<div class="label">Change Passwords</div>
+<input id="newMaster" placeholder="New Master Code">
+<input id="newValet" placeholder="New Valet Code">
+<button onclick="saveCodes()">Save Codes</button>
+<small>Saved permanently in browser</small>
+</div>
+</div>
 
-      <div class="card">
-        <div class="topbar">
-          <div>
-            <div class="title">Event Log</div>
-            <div class="sub">Saved in your browser local storage</div>
-          </div>
-          <div class="pill">
-            <span class="mono" id="logCount">0</span>
-            <span class="mono">events</span>
-          </div>
-        </div>
+<!-- RIGHT -->
+<div>
+<div class="panel">
+<div class="label">Event Log</div>
+<div class="log" id="log"></div>
+</div>
 
-        <div class="side">
-          <div class="logBox">
-            <div class="row">
-              <button id="downloadBtn" class="btn">Download Log</button>
-              <button id="clearBtn" class="btn danger">Clear Log</button>
-            </div>
-            <div class="logList" id="logList"></div>
-          </div>
+<div class="panel">
+<div class="label">Rules</div>
+<small>
+• 4–8 characters<br>
+• letters + digits<br>
+• 2 fails → cooldown<br>
+• 60s inactivity → auto-lock
+</small>
+</div>
+</div>
 
-          <div class="foot">
-            <div class="mono">Security</div>
-            <div style="margin-top:8px">
-              2 fails triggers 10s cooldown<br>
-              60s inactivity triggers auto lock<br>
-              Recursion validates each passcode char
-            </div>
-          </div>
+</div>
+</div>
 
-          <div class="foot">
-            <div class="mono">Tip</div>
-            <div style="margin-top:8px">
-              If the GIF does not show, upload a file named background.gif to the repo root.
-            </div>
-          </div>
-        </div>
-      </div>
+<script>
+/* DEFAULT CODES */
+let master = localStorage.getItem("master") || "1R2A";
+let valet  = localStorage.getItem("valet")  || "123A";
 
-    </div>
-  </div>
+let state="LOCKED";
+let engine=false;
+let fails=0;
+let last=Date.now();
+let cooldown=false;
 
-  <script>
-    const MASTER_CODE = "1R2A";
-    const VALET_CODE  = "123A";
+function log(t){
+  const d=document.createElement("div");
+  d.textContent=new Date().toLocaleTimeString()+" - "+t;
+  document.getElementById("log").prepend(d);
+}
 
-    const INACTIVITY_LIMIT_MS = 60000;
-    const MAX_FAILS = 2;
-    const COOLDOWN_SECONDS = 10;
+/* RECURSION */
+function checkChars(code,i=0){
+  if(i===code.length)return true;
+  if(!/[A-Za-z0-9]/.test(code[i]))return false;
+  return checkChars(code,i+1);
+}
 
-    let state = "LOCKED";
-    let engineOn = false;
-    let failed = 0;
-    let cooldown = false;
+function valid(code){
+  return code.length>=4 && code.length<=8 &&
+         checkChars(code) &&
+         /[A-Za-z]/.test(code) &&
+         /[0-9]/.test(code);
+}
 
-    let inactivityTimeout = null;
-    let cooldownInterval = null;
-    let blinkInterval = null;
+function ui(){
+  document.getElementById("state").textContent=state;
+  document.getElementById("fails").textContent=fails;
+  const l=document.getElementById("light");
+  l.className="light";
+  if(engine)l.classList.add("on");
+  if(state==="VALET")l.classList.add("valet");
+  document.getElementById("engineText").textContent=
+    engine?"ENGINE ON":"ENGINE OFF";
+}
 
-    const passInput = document.getElementById("passInput");
-    const unlockBtn = document.getElementById("unlockBtn");
-    const valetBtn = document.getElementById("valetBtn");
-    const startBtn = document.getElementById("startBtn");
-    const lockBtn  = document.getElementById("lockBtn");
+function msg(t,c){
+  const m=document.getElementById("msg");
+  m.className="alert "+c;
+  m.textContent=t;
+}
 
-    const stateDot  = document.getElementById("stateDot");
-    const statePill = document.getElementById("statePill");
-    const timerText = document.getElementById("timerText");
+function unlock(){
+  if(cooldown)return msg("Cooldown active","bad");
+  const c=code.value.trim();
+  last=Date.now();
 
-    const failsText = document.getElementById("failsText");
-    const cooldownText = document.getElementById("cooldownText");
-    const alertEl = document.getElementById("alert");
+  if(!valid(c)){
+    fails++;
+    msg("Invalid format","bad");
+    log("Invalid format");
+  }
+  else if(c===master){
+    state="UNLOCKED";
+    engine=true;
+    fails=0;
+    msg("Master accepted","ok");
+    log("Master unlock");
+  }
+  else if(c===valet){
+    state="VALET";
+    engine=false;
+    fails=0;
+    msg("Valet mode","warn");
+    log("Valet mode");
+  }
+  else{
+    fails++;
+    msg("Wrong code","bad");
+    log("Wrong code");
+  }
 
-    const engineLight = document.getElementById("engineLight");
-    const engineState = document.getElementById("engineState");
-    const engineHint  = document.getElementById("engineHint");
+  if(fails>=2)startCooldown();
+  ui();
+}
 
-    const loaderWrap = document.getElementById("loaderWrap");
-    const loaderBar  = document.getElementById("loaderBar");
+function startEngine(){
+  last=Date.now();
+  if(state==="LOCKED")return msg("Unlock first","bad");
+  engine=true;
+  msg("Engine started","ok");
+  log("Engine started");
+  ui();
+}
 
-    const logList = document.getElementById("logList");
-    const logCount = document.getElementById("logCount");
-    const downloadBtn = document.getElementById("downloadBtn");
-    const clearBtn = document.getElementById("clearBtn");
+function lockSys(){
+  state="LOCKED";
+  engine=false;
+  fails=0;
+  msg("Locked","ok");
+  log("Locked");
+  ui();
+}
 
-    function ts(){
-      const d = new Date();
-      const pad = n => String(n).padStart(2,"0");
-      return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+function valetMode(){
+  unlock();
+}
+
+function startCooldown(){
+  cooldown=true;
+  state="COOLDOWN";
+  msg("Cooldown 10s","bad");
+  log("Cooldown start");
+  let t=10;
+  const i=setInterval(()=>{
+    t--;
+    if(t<=0){
+      clearInterval(i);
+      cooldown=false;
+      fails=0;
+      state="LOCKED";
+      msg("Cooldown ended","ok");
+      log("Cooldown end");
+      ui();
     }
+  },1000);
+}
 
-    function loadLog(){
-      try{
-        const raw = localStorage.getItem("carSecurityLog");
-        return raw ? JSON.parse(raw) : [];
-      }catch(e){
-        return [];
-      }
-    }
+function saveCodes(){
+  const m=newMaster.value.trim();
+  const v=newValet.value.trim();
+  if(valid(m))localStorage.setItem("master",m);
+  if(valid(v))localStorage.setItem("valet",v);
+  master=localStorage.getItem("master");
+  valet=localStorage.getItem("valet");
+  msg("Codes saved","ok");
+  log("Codes updated");
+}
 
-    function saveLog(list){
-      localStorage.setItem("carSecurityLog", JSON.stringify(list));
-    }
+/* AUTO LOCK */
+setInterval(()=>{
+  if(Date.now()-last>60000 && state!=="LOCKED"){
+    lockSys();
+    msg("Auto locked","bad");
+    log("Auto lock");
+  }
+},1000);
 
-    function addLog(message, tag){
-      const list = loadLog();
-      list.unshift({ t: ts(), m: message, tag });
-      if(list.length > 120) list.length = 120;
-      saveLog(list);
-      renderLog();
-    }
-
-    function renderLog(){
-      const list = loadLog();
-      logCount.textContent = String(list.length);
-      logList.innerHTML = "";
-      for(const item of list){
-        const div = document.createElement("div");
-        div.className = "logItem";
-        const t = document.createElement("div");
-        t.className = "t mono";
-        t.textContent = item.t;
-        const m = document.createElement("div");
-        m.className = "m";
-        m.textContent = item.m;
-        const tag = document.createElement("div");
-        tag.className = "tag " + (item.tag || "info");
-        tag.textContent = (item.tag || "info").toUpperCase();
-        div.appendChild(t);
-        div.appendChild(m);
-        div.appendChild(tag);
-        logList.appendChild(div);
-      }
-    }
-
-    function setAlert(msg, kind){
-      alertEl.className = "alert";
-      if(kind === "ok") alertEl.classList.add("ok");
-      else if(kind === "bad") alertEl.classList.add("bad");
-      else if(kind === "warn") alertEl.classList.add("warnTxt");
-      else alertEl.classList.add("info");
-      alertEl.textContent = msg;
-    }
-
-    function setState(newState){
-      state = newState;
-      statePill.textContent = newState;
-
-      stateDot.className = "dot";
-      if(newState === "UNLOCKED"){
-        stateDot.classList.add("green");
-      }else if(newState === "VALET"){
-        stateDot.classList.add("yellow");
-      }
-      updateUI();
-    }
-
-    function showLoader(label, durationMs){
-      return new Promise(resolve=>{
-        loaderWrap.style.display = "block";
-        loaderBar.style.width = "0%";
-        let start = performance.now();
-
-        const tick = () => {
-          const now = performance.now();
-          const p = Math.min(1, (now - start) / durationMs);
-          loaderBar.style.width = Math.floor(p * 100) + "%";
-          if(p < 1){
-            requestAnimationFrame(tick);
-          }else{
-            setTimeout(()=>{
-              loaderWrap.style.display = "none";
-              resolve();
-            }, 120);
-          }
-        };
-
-        setAlert(label, "info");
-        requestAnimationFrame(tick);
-      });
-    }
-
-    function resetInactivity(){
-      if(inactivityTimeout) clearTimeout(inactivityTimeout);
-      const start = Date.now();
-      inactivityTimeout = setTimeout(()=>{
-        engineOn = false;
-        failed = 0;
-        cooldown = false;
-        if(cooldownInterval){ clearInterval(cooldownInterval); cooldownInterval = null; }
-        setState("LOCKED");
-        setAlert("Auto lock after 60 seconds inactivity", "bad");
-        addLog("Auto lock triggered", "warn");
-      }, INACTIVITY_LIMIT_MS);
-
-      if(window._timerInt) clearInterval(window._timerInt);
-      window._timerInt = setInterval(()=>{
-        const left = Math.max(0, INACTIVITY_LIMIT_MS - (Date.now() - start));
-        const s = Math.ceil(left / 1000);
-        timerText.textContent = `Inactivity ${s}s`;
-        if(left <= 0) clearInterval(window._timerInt);
-      }, 250);
-    }
-
-    function startBlink(){
-      if(blinkInterval) return;
-      blinkInterval = setInterval(()=>{
-        if(engineOn && state !== "LOCKED" && state !== "COOLDOWN"){
-          engineLight.classList.toggle("blinkOff");
-        }else{
-          engineLight.classList.remove("blinkOff");
-        }
-      }, 420);
-    }
-
-    function stopBlink(){
-      if(blinkInterval){
-        clearInterval(blinkInterval);
-        blinkInterval = null;
-      }
-      engineLight.classList.remove("blinkOff");
-    }
-
-    function updateUI(){
-      failsText.textContent = `${failed} / ${MAX_FAILS}`;
-      cooldownText.textContent = cooldown ? "Active" : "Inactive";
-
-      if(state === "LOCKED"){
-        engineHint.textContent = "Locked";
-      }else if(state === "UNLOCKED"){
-        engineHint.textContent = "Full access";
-      }else if(state === "VALET"){
-        engineHint.textContent = "Limited access";
-      }else{
-        engineHint.textContent = "Blocked";
-      }
-
-      if(state === "VALET" && !engineOn){
-        engineLight.className = "light valet";
-        engineState.className = "engineState valet mono";
-        engineState.textContent = "VALET";
-        stopBlink();
-        return;
-      }
-
-      if(engineOn){
-        engineLight.className = "light on";
-        engineState.className = "engineState on mono";
-        engineState.textContent = "ON";
-        startBlink();
-      }else{
-        engineLight.className = "light";
-        engineState.className = "engineState off mono";
-        engineState.textContent = "OFF";
-        stopBlink();
-      }
-    }
-
-    function recursionCharCheck(code, index = 0){
-      if(index === code.length) return true;
-      const ch = code[index];
-      if(!/[A-Za-z0-9]/.test(ch)) return false;
-      return recursionCharCheck(code, index + 1);
-    }
-
-    function validateCodeFormat(code){
-      if(code.length < 4 || code.length > 8){
-        setAlert("Code length must be 4 to 8", "bad");
-        return false;
-      }
-      if(!recursionCharCheck(code)){
-        setAlert("Invalid character found", "bad");
-        return false;
-      }
-      if(!/[A-Za-z]/.test(code) || !/[0-9]/.test(code)){
-        setAlert("Must contain at least one letter and one digit", "bad");
-        return false;
-      }
-      return true;
-    }
-
-    async function startCooldown(){
-      cooldown = true;
-      setState("COOLDOWN");
-      addLog("Cooldown started 10s", "warn");
-
-      let remaining = COOLDOWN_SECONDS;
-      setAlert(`Cooldown ${remaining}s`, "bad");
-      updateUI();
-
-      if(cooldownInterval) clearInterval(cooldownInterval);
-      cooldownInterval = setInterval(()=>{
-        remaining -= 1;
-        if(remaining <= 0){
-          clearInterval(cooldownInterval);
-          cooldownInterval = null;
-          cooldown = false;
-          failed = 0;
-          engineOn = false;
-          setState("LOCKED");
-          setAlert("Cooldown ended", "ok");
-          addLog("Cooldown ended", "ok");
-          updateUI();
-        }else{
-          setAlert(`Cooldown ${remaining}s`, "bad");
-        }
-      }, 1000);
-    }
-
-    function bumpFail(){
-      failed += 1;
-      setAlert(`Wrong code (${failed}/${MAX_FAILS})`, "bad");
-      addLog(`Wrong code attempt (${failed}/${MAX_FAILS})`, "bad");
-      if(failed >= MAX_FAILS){
-        startCooldown();
-      }else{
-        updateUI();
-      }
-    }
-
-    async function unlockFlow(){
-      if(cooldown){
-        setAlert("Cooldown active", "bad");
-        return;
-      }
-
-      const code = passInput.value.trim();
-      resetInactivity();
-
-      if(!validateCodeFormat(code)){
-        failed += 1;
-        addLog("Format validation failed", "bad");
-        if(failed >= MAX_FAILS) startCooldown();
-        updateUI();
-        return;
-      }
-
-      if(code === MASTER_CODE){
-        addLog("Master code accepted", "ok");
-        await showLoader("Unlocking and starting engine", 900);
-        failed = 0;
-        engineOn = true;
-        setState("UNLOCKED");
-        setAlert("Master accepted, engine ON", "ok");
-        updateUI();
-        return;
-      }
-
-      if(code === VALET_CODE){
-        addLog("Valet code accepted", "ok");
-        await showLoader("Entering valet mode", 650);
-        failed = 0;
-        engineOn = false;
-        setState("VALET");
-        setAlert("Valet mode active, engine OFF", "ok");
-        updateUI();
-        return;
-      }
-
-      bumpFail();
-    }
-
-    async function valetFlow(){
-      if(cooldown){
-        setAlert("Cooldown active", "bad");
-        return;
-      }
-
-      const code = passInput.value.trim();
-      resetInactivity();
-
-      if(!validateCodeFormat(code)){
-        failed += 1;
-        addLog("Format validation failed", "bad");
-        if(failed >= MAX_FAILS) startCooldown();
-        updateUI();
-        return;
-      }
-
-      if(code === VALET_CODE){
-        addLog("Valet mode activated", "ok");
-        await showLoader("Validating valet access", 520);
-        failed = 0;
-        engineOn = false;
-        setState("VALET");
-        setAlert("Valet mode active", "ok");
-        updateUI();
-        return;
-      }
-
-      bumpFail();
-    }
-
-    async function startEngineFlow(){
-      resetInactivity();
-
-      if(cooldown){
-        setAlert("Cooldown active", "bad");
-        return;
-      }
-      if(state === "LOCKED"){
-        setAlert("Unlock first", "bad");
-        addLog("Start engine blocked, locked", "warn");
-        return;
-      }
-
-      if(state === "VALET"){
-        addLog("Engine started in valet mode", "warn");
-        await showLoader("Starting engine", 650);
-        engineOn = true;
-        setAlert("Engine ON, valet mode", "warn");
-        updateUI();
-        return;
-      }
-
-      addLog("Engine started", "ok");
-      await showLoader("Starting engine", 650);
-      engineOn = true;
-      setAlert("Engine ON", "ok");
-      updateUI();
-    }
-
-    async function lockFlow(){
-      resetInactivity();
-
-      if(cooldown){
-        setAlert("Cooldown active", "bad");
-        return;
-      }
-
-      addLog("Manual lock", "info");
-      await showLoader("Locking system", 520);
-
-      engineOn = false;
-      failed = 0;
-      setState("LOCKED");
-      setAlert("Locked", "ok");
-      updateUI();
-    }
-
-    unlockBtn.addEventListener("click", unlockFlow);
-    valetBtn.addEventListener("click", valetFlow);
-    startBtn.addEventListener("click", startEngineFlow);
-    lockBtn.addEventListener("click", lockFlow);
-
-    passInput.addEventListener("input", resetInactivity);
-    passInput.addEventListener("keydown", e=>{
-      if(e.key === "Enter") unlockFlow();
-    });
-
-    downloadBtn.addEventListener("click", ()=>{
-      const list = loadLog();
-      const lines = list.map(x => `${x.t} [${(x.tag||"info").toUpperCase()}] ${x.m}`);
-      const blob = new Blob([lines.join("\n")], {type:"text/plain"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "events.log.txt";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-
-    clearBtn.addEventListener("click", ()=>{
-      localStorage.removeItem("carSecurityLog");
-      renderLog();
-      addLog("Log cleared", "info");
-    });
-
-    renderLog();
-    setState("LOCKED");
-    setAlert("Ready", "info");
-    resetInactivity();
-    updateUI();
-    addLog("Page loaded", "info");
-  </script>
+ui();
+log("System ready");
+</script>
 </body>
 </html>
-```
-
