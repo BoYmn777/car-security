@@ -38,7 +38,6 @@
       background:#000;
     }
 
-    /* moving gradient */
     .bg{
       position:fixed; inset:0;
       background:
@@ -56,22 +55,24 @@
       100%{background-position:0% 50%}
     }
 
-    /* optional gif overlay */
+    /* FIXED GIF LAYER */
     .gif{
-      position:fixed; inset:0;
-      background-image: url("./background.gif");
+      position:fixed;
+      top:0;left:0;right:0;bottom:0;
+      background-image:url("./background.gif");
       background-size:cover;
       background-position:center;
-      opacity: 1;
-      filter:saturate(1.05) contrast(1.05);
-      z-index:-5;
+      background-repeat:no-repeat;
+      opacity:0.40;
+      z-index:-3;
+      pointer-events:none;
     }
 
     .shade{
       position:fixed; inset:0;
-      background: linear-gradient(180deg, #00000085, #000000c6);
+      background: linear-gradient(180deg, #00000070, #000000b8);
       backdrop-filter: blur(18px);
-      z-index:-3;
+      z-index:-2;
     }
 
     .wrap{
@@ -135,6 +136,7 @@
       font-size:12px;
       color:var(--muted);
       white-space:nowrap;
+      font-family: var(--mono);
     }
 
     .dot{
@@ -188,6 +190,7 @@
       cursor:pointer;
       transition: transform .12s ease, background .12s ease, border-color .12s ease;
       user-select:none;
+      font-family: var(--mono);
     }
     .btn:hover{transform: translateY(-1px); border-color:#ffffff22}
     .btn:active{transform: translateY(0px)}
@@ -217,6 +220,7 @@
       letter-spacing:.12em;
       color:#a7a7b8;
       text-transform:uppercase;
+      font-family: var(--mono);
     }
 
     .big{
@@ -398,22 +402,9 @@
       background:#0b0c12a6;
       padding:12px;
       font-family: var(--mono);
+      white-space:pre-line;
     }
 
-    .ascii{
-      white-space:pre;
-      font-family: var(--mono);
-      font-size:12px;
-      line-height:1.2;
-      color:#dfe0ff;
-      border:1px solid var(--stroke);
-      border-radius:14px;
-      background:#07070a;
-      padding:12px;
-      overflow:auto;
-    }
-
-    /* modal */
     .modal{
       position:fixed; inset:0;
       display:none;
@@ -457,8 +448,8 @@
   </style>
 </head>
 <body>
-  <div class="gif"></div>
   <div class="bg"></div>
+  <div class="gif"></div>
   <div class="shade"></div>
 
   <div class="wrap">
@@ -546,11 +537,6 @@
 
           </div>
 
-          <div class="panel">
-            <div class="label">ASCII Dashboard</div>
-            <div class="ascii" id="asciiDash"></div>
-          </div>
-
         </div>
       </div>
 
@@ -578,17 +564,12 @@
 
           <div class="foot" id="codesHint"></div>
 
-          <div class="foot">
-            Upload a file named background.gif to the repo root if you want a moving GIF overlay
-          </div>
-
         </div>
       </div>
 
     </div>
   </div>
 
-  <!-- Admin Modal -->
   <div class="modal" id="adminModal">
     <div class="modalCard">
       <div class="modalTop">
@@ -687,7 +668,6 @@
     const downloadBtn = el("downloadBtn");
     const clearBtn = el("clearBtn");
 
-    const asciiDash = el("asciiDash");
     const codesHint = el("codesHint");
 
     const adminModal = el("adminModal");
@@ -833,7 +813,6 @@
       });
     }
 
-    /* recursion character check */
     function recursiveCheck(code, index = 0){
       if(index === code.length) return true;
       const ch = code[index];
@@ -851,28 +830,6 @@
     function getMaster(){ return load(k.master, DEFAULT_MASTER); }
     function getValet(){ return load(k.valet, DEFAULT_VALET); }
     function getAdmin(){ return load(k.admin, DEFAULT_ADMIN); }
-
-    function ascii(){
-      const s = state;
-      const e = engineOn ? "ON " : "OFF";
-      const f = `${failed}/${MAX_FAILS}`;
-      const c = cooldown ? "YES" : "NO ";
-      const st = (s + "      ").slice(0, 8);
-      const line = (txt) => txt + "\n";
-
-      let out = "";
-      out += line("  ________________________________");
-      out += line(" /  CAR DASHBOARD SIMULATION      \\");
-      out += line("|----------------------------------|");
-      out += line(`| STATE   : ${st}                 |`);
-      out += line(`| ENGINE  : ${e}                   |`);
-      out += line(`| FAILS   : ${f}                   |`);
-      out += line(`| COOLDWN : ${c}                  |`);
-      out += line("|----------------------------------|");
-      out += line("| [LOCK] [UNLOCK] [VALET] [START]  |");
-      out += line("|__________________________________|");
-      return out;
-    }
 
     function updateUI(){
       statePill.textContent = state;
@@ -908,8 +865,6 @@
         engineState.textContent = "OFF";
         engineState.classList.add("off");
       }
-
-      asciiDash.textContent = ascii();
 
       const hint = [
         `Master ${getMaster()}`,
@@ -1243,7 +1198,6 @@
       }
       save(k.master, DEFAULT_MASTER);
       save(k.valet, DEFAULT_VALET);
-      save(k.admin, getAdmin());
       setAdminAlert("Codes reset to default", "warn");
       addLog("Codes reset to default", "warn");
       beep("warn");
@@ -1365,10 +1319,6 @@
       if(e.key === "Enter") unlockFlow();
     });
 
-    setInterval(()=>{
-      if(Date.now() - (resetInactivity._last || Date.now()) > INACTIVITY_LIMIT) return;
-    }, 1000);
-
     (function boot(){
       initDefaults();
       applyTheme();
@@ -1381,21 +1331,8 @@
       setAlert("Ready", "info");
       addLog("Page loaded", "info");
       resetInactivity();
-
-      const _reset = resetInactivity;
-      resetInactivity = function(){
-        resetInactivity._last = Date.now();
-        return _reset();
-      };
-
       startBlink();
     })();
   </script>
 </body>
 </html>
-```
-
-
-
-
-
