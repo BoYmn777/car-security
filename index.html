@@ -1,377 +1,1415 @@
+Paste this as index.html then commit
+
+It combines everything
+
+Moving background
+GIF support
+Engine panel
+Animated loading bar
+ASCII dashboard
+Multi state system
+Blinking engine indicator
+Stronger validation
+Event logging with download
+Changeable saved passwords
+Admin mode
+Dark neon toggle
+Sound effects without audio files
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Car Security System</title>
-
-<style>
-:root{
-  --bg1:#02040f;
-  --bg2:#0a0f2c;
-  --card:#0b1020cc;
-  --stroke:#ffffff1a;
-  --red:#ff3b30;
-  --green:#34c759;
-  --yellow:#ffcc00;
-  --blue:#0a84ff;
-  --text:#ffffff;
-  --muted:#b0b4d4;
-}
-
-*{margin:0;padding:0;box-sizing:border-box}
-
-body{
-  font-family:system-ui,Arial;
-  color:var(--text);
-  min-height:100vh;
-  overflow:hidden;
-}
-
-/* MOVING BACKGROUND */
-.bg{
-  position:fixed;
-  inset:0;
-  background:
-    linear-gradient(120deg,var(--bg1),var(--bg2),var(--bg1));
-  background-size:400% 400%;
-  animation:bgMove 18s ease infinite;
-  z-index:-3;
-}
-@keyframes bgMove{
-  0%{background-position:0% 50%}
-  50%{background-position:100% 50%}
-  100%{background-position:0% 50%}
-}
-
-.blur{
-  position:fixed;
-  inset:0;
-  backdrop-filter:blur(40px);
-  background:#00000090;
-  z-index:-2;
-}
-
-.wrap{
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-}
-
-.card{
-  width:min(960px,100%);
-  background:var(--card);
-  border:1px solid var(--stroke);
-  border-radius:22px;
-  box-shadow:0 30px 80px #000;
-  padding:22px;
-  display:grid;
-  grid-template-columns:1.2fr .8fr;
-  gap:18px;
-}
-
-@media(max-width:850px){
-  .card{grid-template-columns:1fr}
-}
-
-h1{
-  font-size:20px;
-  margin-bottom:6px;
-}
-.sub{
-  font-size:12px;
-  color:var(--muted);
-  margin-bottom:14px;
-}
-
-input,button{
-  width:100%;
-  padding:12px;
-  border-radius:14px;
-  border:1px solid var(--stroke);
-  background:#0a0e1f;
-  color:#fff;
-  font-size:14px;
-}
-
-button{
-  cursor:pointer;
-  transition:.15s;
-}
-button:hover{transform:translateY(-1px)}
-
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-
-.panel{
-  border:1px solid var(--stroke);
-  border-radius:18px;
-  padding:14px;
-  background:#080b18cc;
-}
-
-.label{
-  font-size:11px;
-  color:var(--muted);
-  letter-spacing:.12em;
-  text-transform:uppercase;
-}
-
-.value{margin-top:4px;font-size:15px}
-
-.engine{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-top:10px;
-}
-
-.light{
-  width:14px;height:14px;border-radius:50%;
-  background:var(--red);
-  box-shadow:0 0 14px var(--red);
-}
-
-.on{background:var(--green);box-shadow:0 0 16px var(--green)}
-.valet{background:var(--yellow);box-shadow:0 0 16px var(--yellow)}
-
-.alert{margin-top:10px;font-size:13px;min-height:20px}
-.ok{color:var(--green)}
-.bad{color:var(--red)}
-.warn{color:var(--yellow)}
-
-.log{
-  max-height:260px;
-  overflow:auto;
-  border:1px solid var(--stroke);
-  border-radius:14px;
-  background:#050713;
-}
-
-.log div{
-  padding:10px;
-  border-bottom:1px solid #ffffff0f;
-  font-size:12px;
-}
-
-small{font-size:11px;color:var(--muted)}
-</style>
-</head>
-
-<body>
-<div class="bg"></div>
-<div class="blur"></div>
-
-<div class="wrap">
-<div class="card">
-
-<!-- LEFT -->
-<div>
-<h1>Car Security System</h1>
-<div class="sub">Auto-Lock • Cooldown • Recursion • User Password Control</div>
-
-<input id="code" placeholder="Enter passcode">
-
-<div class="row">
-<button onclick="unlock()">Unlock</button>
-<button onclick="startEngine()">Start Engine</button>
-</div>
-
-<div class="row">
-<button onclick="lockSys()">Lock</button>
-<button onclick="valetMode()">Valet</button>
-</div>
-
-<div class="alert" id="msg"></div>
-
-<div class="panel">
-<div class="label">Status</div>
-<div class="value" id="state">LOCKED</div>
-
-<div class="engine">
-<div class="light" id="light"></div>
-<div id="engineText">ENGINE OFF</div>
-</div>
-
-<div class="value">Fails: <span id="fails">0</span>/2</div>
-</div>
-
-<div class="panel">
-<div class="label">Change Passwords</div>
-<input id="newMaster" placeholder="New Master Code">
-<input id="newValet" placeholder="New Valet Code">
-<button onclick="saveCodes()">Save Codes</button>
-<small>Saved permanently in browser</small>
-</div>
-</div>
-
-<!-- RIGHT -->
-<div>
-<div class="panel">
-<div class="label">Event Log</div>
-<div class="log" id="log"></div>
-</div>
-
-<div class="panel">
-<div class="label">Rules</div>
-<small>
-• 4–8 characters<br>
-• letters + digits<br>
-• 2 fails → cooldown<br>
-• 60s inactivity → auto-lock
-</small>
-</div>
-</div>
-
-</div>
-</div>
-
-<script>
-/* DEFAULT CODES */
-let master = localStorage.getItem("master") || "1R2A";
-let valet  = localStorage.getItem("valet")  || "123A";
-
-let state="LOCKED";
-let engine=false;
-let fails=0;
-let last=Date.now();
-let cooldown=false;
-
-function log(t){
-  const d=document.createElement("div");
-  d.textContent=new Date().toLocaleTimeString()+" - "+t;
-  document.getElementById("log").prepend(d);
-}
-
-/* RECURSION */
-function checkChars(code,i=0){
-  if(i===code.length)return true;
-  if(!/[A-Za-z0-9]/.test(code[i]))return false;
-  return checkChars(code,i+1);
-}
-
-function valid(code){
-  return code.length>=4 && code.length<=8 &&
-         checkChars(code) &&
-         /[A-Za-z]/.test(code) &&
-         /[0-9]/.test(code);
-}
-
-function ui(){
-  document.getElementById("state").textContent=state;
-  document.getElementById("fails").textContent=fails;
-  const l=document.getElementById("light");
-  l.className="light";
-  if(engine)l.classList.add("on");
-  if(state==="VALET")l.classList.add("valet");
-  document.getElementById("engineText").textContent=
-    engine?"ENGINE ON":"ENGINE OFF";
-}
-
-function msg(t,c){
-  const m=document.getElementById("msg");
-  m.className="alert "+c;
-  m.textContent=t;
-}
-
-function unlock(){
-  if(cooldown)return msg("Cooldown active","bad");
-  const c=code.value.trim();
-  last=Date.now();
-
-  if(!valid(c)){
-    fails++;
-    msg("Invalid format","bad");
-    log("Invalid format");
-  }
-  else if(c===master){
-    state="UNLOCKED";
-    engine=true;
-    fails=0;
-    msg("Master accepted","ok");
-    log("Master unlock");
-  }
-  else if(c===valet){
-    state="VALET";
-    engine=false;
-    fails=0;
-    msg("Valet mode","warn");
-    log("Valet mode");
-  }
-  else{
-    fails++;
-    msg("Wrong code","bad");
-    log("Wrong code");
-  }
-
-  if(fails>=2)startCooldown();
-  ui();
-}
-
-function startEngine(){
-  last=Date.now();
-  if(state==="LOCKED")return msg("Unlock first","bad");
-  engine=true;
-  msg("Engine started","ok");
-  log("Engine started");
-  ui();
-}
-
-function lockSys(){
-  state="LOCKED";
-  engine=false;
-  fails=0;
-  msg("Locked","ok");
-  log("Locked");
-  ui();
-}
-
-function valetMode(){
-  unlock();
-}
-
-function startCooldown(){
-  cooldown=true;
-  state="COOLDOWN";
-  msg("Cooldown 10s","bad");
-  log("Cooldown start");
-  let t=10;
-  const i=setInterval(()=>{
-    t--;
-    if(t<=0){
-      clearInterval(i);
-      cooldown=false;
-      fails=0;
-      state="LOCKED";
-      msg("Cooldown ended","ok");
-      log("Cooldown end");
-      ui();
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Car Security System</title>
+  <style>
+    :root{
+      --bg0:#07070a;
+      --bg1:#0a0f2c;
+      --card:#0e0f16cc;
+      --stroke:#ffffff14;
+      --text:#ffffff;
+      --muted:#b9b9c6;
+      --red:#ff3b30;
+      --green:#34c759;
+      --yellow:#ffcc00;
+      --blue:#0a84ff;
+      --panel:#0b0c1280;
+      --shadow:#00000080;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
-  },1000);
-}
 
-function saveCodes(){
-  const m=newMaster.value.trim();
-  const v=newValet.value.trim();
-  if(valid(m))localStorage.setItem("master",m);
-  if(valid(v))localStorage.setItem("valet",v);
-  master=localStorage.getItem("master");
-  valet=localStorage.getItem("valet");
-  msg("Codes saved","ok");
-  log("Codes updated");
-}
+    body.neon{
+      --card:#06060bcc;
+      --stroke:#00ffd51f;
+      --muted:#bfeee0;
+      --panel:#041312b8;
+      --shadow:#001a1560;
+    }
 
-/* AUTO LOCK */
-setInterval(()=>{
-  if(Date.now()-last>60000 && state!=="LOCKED"){
-    lockSys();
-    msg("Auto locked","bad");
-    log("Auto lock");
-  }
-},1000);
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      overflow-x:hidden;
+      background:#000;
+    }
 
-ui();
-log("System ready");
-</script>
+    /* moving gradient */
+    .bg{
+      position:fixed; inset:0;
+      background:
+        radial-gradient(1000px 600px at 15% 25%, #1730ff22, transparent 65%),
+        radial-gradient(900px 500px at 80% 25%, #00ffcc18, transparent 65%),
+        radial-gradient(900px 500px at 55% 95%, #ff3b3012, transparent 60%),
+        linear-gradient(120deg, var(--bg0), var(--bg1), var(--bg0));
+      background-size: 140% 140%;
+      animation:bgMove 16s ease-in-out infinite;
+      z-index:-4;
+    }
+    @keyframes bgMove{
+      0%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+      100%{background-position:0% 50%}
+    }
+
+    /* optional gif overlay */
+    .gif{
+      position:fixed; inset:0;
+      background-image:url("background.gif");
+      background-size:cover;
+      background-position:center;
+      opacity:.20;
+      filter:saturate(1.05) contrast(1.05);
+      z-index:-5;
+    }
+
+    .shade{
+      position:fixed; inset:0;
+      background: linear-gradient(180deg, #00000085, #000000c6);
+      backdrop-filter: blur(18px);
+      z-index:-3;
+    }
+
+    .wrap{
+      min-height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:22px;
+    }
+
+    .grid{
+      width:min(1100px, 100%);
+      display:grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap:18px;
+    }
+
+    @media (max-width: 920px){
+      .grid{grid-template-columns:1fr}
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--stroke);
+      border-radius:22px;
+      box-shadow: 0 26px 80px var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+
+    .topbar{
+      padding:18px 18px 12px 18px;
+      border-bottom:1px solid var(--stroke);
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .title{
+      font-size:18px;
+      line-height:1.2;
+      letter-spacing:.2px;
+    }
+
+    .sub{
+      margin-top:6px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border:1px solid var(--stroke);
+      border-radius:999px;
+      background:var(--panel);
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    .dot{
+      width:10px;height:10px;border-radius:50%;
+      background: var(--red);
+      box-shadow: 0 0 14px #ff3b3070;
+    }
+    .dot.green{background:var(--green); box-shadow:0 0 14px #34c75970}
+    .dot.yellow{background:var(--yellow); box-shadow:0 0 14px #ffcc0070}
+
+    .main{
+      padding:16px 18px 18px 18px;
+      display:grid;
+      gap:14px;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 560px){
+      .row{grid-template-columns:1fr}
+    }
+
+    .input{
+      width:100%;
+      padding:12px 12px;
+      background:#0b0c12;
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      color:#fff;
+      outline:none;
+      font-size:14px;
+      letter-spacing:.5px;
+      font-family: var(--mono);
+    }
+    .input:focus{
+      border-color:#ffffff2a;
+      box-shadow: 0 0 0 3px #0a84ff22;
+    }
+
+    .btn{
+      width:100%;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--stroke);
+      background:#0b0c12;
+      color:#fff;
+      font-size:14px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      user-select:none;
+    }
+    .btn:hover{transform: translateY(-1px); border-color:#ffffff22}
+    .btn:active{transform: translateY(0px)}
+    .btn.primary{background:#0a84ff22; border-color:#0a84ff44}
+    .btn.danger{background:#ff3b3018; border-color:#ff3b3038}
+    .btn.good{background:#34c7591a; border-color:#34c7593a}
+    .btn.warn{background:#ffcc0014; border-color:#ffcc0033}
+    .btn.ghost{background:transparent}
+
+    .panel{
+      border:1px solid var(--stroke);
+      background:var(--panel);
+      border-radius:16px;
+      padding:14px;
+    }
+
+    .panelHead{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+    }
+
+    .label{
+      font-size:11px;
+      letter-spacing:.12em;
+      color:#a7a7b8;
+      text-transform:uppercase;
+    }
+
+    .big{
+      font-size:15px;
+      margin-top:3px;
+      font-family: var(--mono);
+    }
+
+    .kpis{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .kpi{
+      border:1px solid var(--stroke);
+      background:#0b0c12a6;
+      border-radius:14px;
+      padding:12px;
+    }
+
+    .kpiVal{
+      font-size:16px;
+      margin-top:6px;
+      font-family: var(--mono);
+    }
+
+    .engineBox{
+      border:1px solid var(--stroke);
+      background:#0b0c12a6;
+      border-radius:16px;
+      padding:12px;
+      margin-top:10px;
+    }
+
+    .engineRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .engineText{
+      font-size:12px;
+      color:var(--muted);
+      font-family: var(--mono);
+    }
+
+    .engineState{
+      font-size:15px;
+      letter-spacing:.4px;
+      font-family: var(--mono);
+    }
+    .engineState.on{color:var(--green)}
+    .engineState.off{color:var(--red)}
+    .engineState.valet{color:var(--yellow)}
+    .engineState.cool{color:var(--red)}
+
+    .light{
+      width:14px;height:14px;border-radius:50%;
+      background:var(--red);
+      box-shadow:0 0 16px #ff3b3068;
+      transition: opacity .12s ease;
+      flex:0 0 auto;
+    }
+    .light.on{background:var(--green); box-shadow:0 0 16px #34c75968}
+    .light.valet{background:var(--yellow); box-shadow:0 0 16px #ffcc0068}
+    .blinkOff{opacity:.25; box-shadow:none}
+
+    .grade{
+      margin-top:10px;
+      border-radius:14px;
+      overflow:hidden;
+      border:1px solid var(--stroke);
+      background:#07070a;
+    }
+    .gradeBar{
+      height:12px;
+      background: linear-gradient(90deg, #ff3b30, #ffcc00, #34c759);
+      opacity:.95;
+    }
+    .gradeMeta{
+      display:flex;
+      justify-content:space-between;
+      padding:10px 10px;
+      font-size:12px;
+      color:var(--muted);
+      border-top:1px solid var(--stroke);
+      background:#0b0c12b0;
+      font-family: var(--mono);
+    }
+
+    .alert{
+      min-height:22px;
+      font-size:13px;
+      line-height:1.4;
+      font-family: var(--mono);
+    }
+    .ok{color:var(--green)}
+    .bad{color:var(--red)}
+    .info{color:#c8c8d8}
+    .warnTxt{color:var(--yellow)}
+
+    .loaderWrap{
+      height:10px;
+      border-radius:999px;
+      background:#ffffff10;
+      overflow:hidden;
+      border:1px solid var(--stroke);
+      display:none;
+    }
+    .loader{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      transition: width .08s linear;
+    }
+
+    .side{
+      padding:18px;
+      display:grid;
+      gap:14px;
+    }
+
+    .logBox{
+      border:1px solid var(--stroke);
+      background:#0b0c12a6;
+      border-radius:16px;
+      padding:12px;
+      display:grid;
+      gap:10px;
+    }
+
+    .logList{
+      max-height:280px;
+      overflow:auto;
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      background:#07070a;
+    }
+
+    .logItem{
+      padding:10px 10px;
+      border-bottom:1px solid #ffffff0f;
+      font-size:12px;
+      color:#d7d7e6;
+      line-height:1.35;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      font-family: var(--mono);
+    }
+    .logItem:last-child{border-bottom:none}
+    .t{color:#9e9eb1; flex:0 0 auto}
+    .m{color:#eaeafd; flex:1 1 auto}
+    .tag{
+      flex:0 0 auto;
+      border:1px solid #ffffff18;
+      border-radius:999px;
+      padding:2px 8px;
+      font-size:11px;
+      color:#cfcfe0;
+      background:#ffffff08;
+      white-space:nowrap;
+      font-family: var(--mono);
+    }
+    .tag.ok{border-color:#34c75955; background:#34c75918; color:#a7ffbf}
+    .tag.bad{border-color:#ff3b3055; background:#ff3b3018; color:#ffb3ad}
+    .tag.warn{border-color:#ffcc0055; background:#ffcc0014; color:#ffeaa7}
+    .tag.info{border-color:#0a84ff55; background:#0a84ff18; color:#b6dcff}
+
+    .foot{
+      font-size:12px;
+      color:#a7a7b8;
+      line-height:1.45;
+      border:1px solid var(--stroke);
+      border-radius:16px;
+      background:#0b0c12a6;
+      padding:12px;
+      font-family: var(--mono);
+    }
+
+    .ascii{
+      white-space:pre;
+      font-family: var(--mono);
+      font-size:12px;
+      line-height:1.2;
+      color:#dfe0ff;
+      border:1px solid var(--stroke);
+      border-radius:14px;
+      background:#07070a;
+      padding:12px;
+      overflow:auto;
+    }
+
+    /* modal */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:#000000a6;
+      z-index:99;
+      padding:18px;
+    }
+    .modal.open{display:flex}
+    .modalCard{
+      width:min(520px, 100%);
+      background:var(--card);
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      box-shadow:0 26px 80px var(--shadow);
+      padding:16px;
+    }
+    .modalTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .modalTitle{
+      font-size:14px;
+      font-family: var(--mono);
+    }
+    .modalSub{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:6px;
+      font-family: var(--mono);
+    }
+    .closeX{
+      width:auto;
+      padding:8px 10px;
+      border-radius:12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="gif"></div>
+  <div class="bg"></div>
+  <div class="shade"></div>
+
+  <div class="wrap">
+    <div class="grid">
+
+      <div class="card">
+        <div class="topbar">
+          <div>
+            <div class="title">Car Security System</div>
+            <div class="sub">Auto Lock, Cooldown, Recursion, Admin Mode, Neon Toggle, Saved Codes, Event Log</div>
+          </div>
+          <div class="pill">
+            <span id="stateDot" class="dot"></span>
+            <span id="statePill">LOCKED</span>
+          </div>
+        </div>
+
+        <div class="main">
+
+          <div class="panel">
+            <div class="panelHead">
+              <div>
+                <div class="label">Passcode</div>
+                <div class="big" id="ruleText">4–8 chars, letters and digits, recursion checks every char</div>
+              </div>
+              <div class="pill">
+                <span id="timerText">Inactivity 60s</span>
+              </div>
+            </div>
+
+            <input id="passInput" class="input" placeholder="Enter passcode" autocomplete="off" />
+
+            <div class="row">
+              <button id="unlockBtn" class="btn primary">Unlock Validate</button>
+              <button id="valetBtn" class="btn warn">Valet Mode</button>
+            </div>
+
+            <div class="row">
+              <button id="startBtn" class="btn good">Start Engine</button>
+              <button id="lockBtn" class="btn danger">Lock</button>
+            </div>
+
+            <div class="row">
+              <button id="toggleThemeBtn" class="btn ghost">Dark Neon Toggle</button>
+              <button id="adminBtn" class="btn ghost">Admin Mode</button>
+            </div>
+
+            <div style="margin-top:10px">
+              <div class="loaderWrap" id="loaderWrap"><div class="loader" id="loaderBar"></div></div>
+              <div class="alert" id="alert"></div>
+            </div>
+
+            <div class="kpis">
+              <div class="kpi">
+                <div class="label">Failed Attempts</div>
+                <div class="kpiVal" id="failsText">0 / 2</div>
+              </div>
+              <div class="kpi">
+                <div class="label">Cooldown</div>
+                <div class="kpiVal" id="cooldownText">Inactive</div>
+              </div>
+            </div>
+
+            <div class="engineBox">
+              <div class="engineRow">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span id="engineLight" class="light"></span>
+                  <div>
+                    <div class="label">Engine Panel</div>
+                    <div id="engineState" class="engineState off">OFF</div>
+                  </div>
+                </div>
+                <div class="engineText" id="engineHint">Locked</div>
+              </div>
+
+              <div class="grade">
+                <div class="gradeBar"></div>
+                <div class="gradeMeta">
+                  <span>RED</span>
+                  <span>YELLOW</span>
+                  <span>GREEN</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="panel">
+            <div class="label">ASCII Dashboard</div>
+            <div class="ascii" id="asciiDash"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="topbar">
+          <div>
+            <div class="title">Event Log</div>
+            <div class="sub">Saved in your browser local storage</div>
+          </div>
+          <div class="pill">
+            <span id="logCount">0</span>
+            <span>events</span>
+          </div>
+        </div>
+
+        <div class="side">
+
+          <div class="logBox">
+            <div class="row">
+              <button id="downloadBtn" class="btn">Download Log</button>
+              <button id="clearBtn" class="btn danger">Clear Log</button>
+            </div>
+            <div class="logList" id="logList"></div>
+          </div>
+
+          <div class="foot" id="codesHint"></div>
+
+          <div class="foot">
+            Upload a file named background.gif to the repo root if you want a moving GIF overlay
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Admin Modal -->
+  <div class="modal" id="adminModal">
+    <div class="modalCard">
+      <div class="modalTop">
+        <div>
+          <div class="modalTitle">Admin Mode</div>
+          <div class="modalSub">Login to change codes, reset log, export state</div>
+        </div>
+        <button class="btn closeX" id="closeAdmin">Close</button>
+      </div>
+
+      <div class="panel">
+        <div class="label">Admin Passcode</div>
+        <input id="adminPassInput" class="input" placeholder="Enter admin passcode" autocomplete="off" />
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="adminLoginBtn">Login</button>
+          <button class="btn ghost" id="adminLogoutBtn">Logout</button>
+        </div>
+        <div class="alert" id="adminMsg"></div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <div class="label">Change User Codes</div>
+        <input id="newMaster" class="input" placeholder="New Master Code" autocomplete="off" />
+        <input id="newValet" class="input" placeholder="New Valet Code" autocomplete="off" style="margin-top:10px" />
+        <div class="row" style="margin-top:10px">
+          <button class="btn good" id="saveCodesBtn">Save Codes</button>
+          <button class="btn warn" id="resetCodesBtn">Reset Default</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <div class="label">Admin Tools</div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="exportStateBtn">Export State</button>
+          <button class="btn danger" id="wipeAllBtn">Wipe All Data</button>
+        </div>
+        <div class="modalSub" style="margin-top:10px">Default admin passcode is ADMIN777</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_MASTER = "1R2A";
+    const DEFAULT_VALET  = "123A";
+    const DEFAULT_ADMIN  = "ADMIN777";
+
+    const INACTIVITY_LIMIT = 60000;
+    const MAX_FAILS = 2;
+    const COOLDOWN_SECONDS = 10;
+
+    const k = {
+      master: "carsec_master",
+      valet: "carsec_valet",
+      admin: "carsec_admin",
+      log: "carsec_log",
+      theme: "carsec_theme"
+    };
+
+    let state = "LOCKED";
+    let engineOn = false;
+    let failed = 0;
+    let cooldown = false;
+    let adminAuthed = false;
+
+    let inactivityTimer = null;
+    let cooldownTimer = null;
+    let blinkTimer = null;
+    let timerUi = null;
+
+    const el = id => document.getElementById(id);
+
+    const passInput = el("passInput");
+    const unlockBtn = el("unlockBtn");
+    const valetBtn = el("valetBtn");
+    const startBtn = el("startBtn");
+    const lockBtn  = el("lockBtn");
+    const toggleThemeBtn = el("toggleThemeBtn");
+    const adminBtn = el("adminBtn");
+
+    const stateDot  = el("stateDot");
+    const statePill = el("statePill");
+    const timerText = el("timerText");
+    const failsText = el("failsText");
+    const cooldownText = el("cooldownText");
+    const alertBox = el("alert");
+
+    const engineLight = el("engineLight");
+    const engineState = el("engineState");
+    const engineHint  = el("engineHint");
+
+    const loaderWrap = el("loaderWrap");
+    const loaderBar  = el("loaderBar");
+
+    const logList = el("logList");
+    const logCount = el("logCount");
+    const downloadBtn = el("downloadBtn");
+    const clearBtn = el("clearBtn");
+
+    const asciiDash = el("asciiDash");
+    const codesHint = el("codesHint");
+
+    const adminModal = el("adminModal");
+    const closeAdmin = el("closeAdmin");
+    const adminPassInput = el("adminPassInput");
+    const adminLoginBtn = el("adminLoginBtn");
+    const adminLogoutBtn = el("adminLogoutBtn");
+    const adminMsg = el("adminMsg");
+
+    const newMaster = el("newMaster");
+    const newValet  = el("newValet");
+    const saveCodesBtn = el("saveCodesBtn");
+    const resetCodesBtn = el("resetCodesBtn");
+    const exportStateBtn = el("exportStateBtn");
+    const wipeAllBtn = el("wipeAllBtn");
+
+    function nowTS(){
+      const d = new Date();
+      const p = n => String(n).padStart(2,"0");
+      return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    }
+
+    function load(key, fallback){
+      const v = localStorage.getItem(key);
+      return (v === null || v === undefined) ? fallback : v;
+    }
+
+    function save(key, value){
+      localStorage.setItem(key, value);
+    }
+
+    function loadLog(){
+      try{
+        const raw = localStorage.getItem(k.log);
+        return raw ? JSON.parse(raw) : [];
+      }catch(e){
+        return [];
+      }
+    }
+
+    function saveLog(list){
+      localStorage.setItem(k.log, JSON.stringify(list));
+    }
+
+    function addLog(message, tag){
+      const list = loadLog();
+      list.unshift({ t: nowTS(), m: message, tag });
+      if(list.length > 140) list.length = 140;
+      saveLog(list);
+      renderLog();
+    }
+
+    function renderLog(){
+      const list = loadLog();
+      logCount.textContent = String(list.length);
+      logList.innerHTML = "";
+      for(const item of list){
+        const div = document.createElement("div");
+        div.className = "logItem";
+        const t = document.createElement("div");
+        t.className = "t";
+        t.textContent = item.t;
+        const m = document.createElement("div");
+        m.className = "m";
+        m.textContent = item.m;
+        const tag = document.createElement("div");
+        tag.className = "tag " + (item.tag || "info");
+        tag.textContent = (item.tag || "info").toUpperCase();
+        div.appendChild(t);
+        div.appendChild(m);
+        div.appendChild(tag);
+        logList.appendChild(div);
+      }
+    }
+
+    function beep(type){
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if(!AudioCtx) return;
+
+      const ctx = beep._ctx || (beep._ctx = new AudioCtx());
+      if(ctx.state === "suspended") ctx.resume();
+
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g);
+      g.connect(ctx.destination);
+
+      let f = 440;
+      let d = 0.08;
+      let v = 0.04;
+
+      if(type === "ok"){ f = 880; d = 0.09; v = 0.045; }
+      if(type === "bad"){ f = 180; d = 0.11; v = 0.05; }
+      if(type === "warn"){ f = 520; d = 0.10; v = 0.04; }
+      if(type === "tap"){ f = 320; d = 0.04; v = 0.02; }
+
+      o.type = "sine";
+      o.frequency.value = f;
+
+      const t = ctx.currentTime;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(v, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+
+      o.start(t);
+      o.stop(t + d + 0.02);
+    }
+
+    function setAlert(message, type){
+      alertBox.textContent = message;
+      alertBox.className = "alert";
+      if(type === "ok") alertBox.classList.add("ok");
+      else if(type === "bad") alertBox.classList.add("bad");
+      else if(type === "warn") alertBox.classList.add("warnTxt");
+      else alertBox.classList.add("info");
+    }
+
+    function setAdminAlert(message, type){
+      adminMsg.textContent = message;
+      adminMsg.className = "alert";
+      if(type === "ok") adminMsg.classList.add("ok");
+      else if(type === "bad") adminMsg.classList.add("bad");
+      else if(type === "warn") adminMsg.classList.add("warnTxt");
+      else adminMsg.classList.add("info");
+    }
+
+    function showLoader(label, durationMs){
+      return new Promise(resolve=>{
+        loaderWrap.style.display = "block";
+        loaderBar.style.width = "0%";
+        setAlert(label, "info");
+        let start = performance.now();
+        const tick = () => {
+          const p = Math.min(1, (performance.now() - start) / durationMs);
+          loaderBar.style.width = Math.floor(p * 100) + "%";
+          if(p < 1) requestAnimationFrame(tick);
+          else setTimeout(()=>{
+            loaderWrap.style.display = "none";
+            resolve();
+          }, 110);
+        };
+        requestAnimationFrame(tick);
+      });
+    }
+
+    /* recursion character check */
+    function recursiveCheck(code, index = 0){
+      if(index === code.length) return true;
+      const ch = code[index];
+      if(!/[A-Za-z0-9]/.test(ch)) return false;
+      return recursiveCheck(code, index + 1);
+    }
+
+    function validateCodeFormat(code){
+      if(code.length < 4 || code.length > 8) return { ok:false, msg:"Code length must be 4–8" };
+      if(!recursiveCheck(code)) return { ok:false, msg:"Only letters and digits allowed" };
+      if(!/[A-Za-z]/.test(code) || !/[0-9]/.test(code)) return { ok:false, msg:"Must contain at least one letter and one digit" };
+      return { ok:true, msg:"OK" };
+    }
+
+    function getMaster(){ return load(k.master, DEFAULT_MASTER); }
+    function getValet(){ return load(k.valet, DEFAULT_VALET); }
+    function getAdmin(){ return load(k.admin, DEFAULT_ADMIN); }
+
+    function ascii(){
+      const s = state;
+      const e = engineOn ? "ON " : "OFF";
+      const f = `${failed}/${MAX_FAILS}`;
+      const c = cooldown ? "YES" : "NO ";
+      const st = (s + "      ").slice(0, 8);
+      const line = (txt) => txt + "\n";
+
+      let out = "";
+      out += line("  ________________________________");
+      out += line(" /  CAR DASHBOARD SIMULATION      \\");
+      out += line("|----------------------------------|");
+      out += line(`| STATE   : ${st}                 |`);
+      out += line(`| ENGINE  : ${e}                   |`);
+      out += line(`| FAILS   : ${f}                   |`);
+      out += line(`| COOLDWN : ${c}                  |`);
+      out += line("|----------------------------------|");
+      out += line("| [LOCK] [UNLOCK] [VALET] [START]  |");
+      out += line("|__________________________________|");
+      return out;
+    }
+
+    function updateUI(){
+      statePill.textContent = state;
+
+      stateDot.className = "dot";
+      if(state === "UNLOCKED") stateDot.classList.add("green");
+      if(state === "VALET") stateDot.classList.add("yellow");
+
+      failsText.textContent = `${failed} / ${MAX_FAILS}`;
+      cooldownText.textContent = cooldown ? "Active" : "Inactive";
+
+      if(state === "LOCKED") engineHint.textContent = "Locked";
+      if(state === "UNLOCKED") engineHint.textContent = "Full access";
+      if(state === "VALET") engineHint.textContent = "Limited access";
+      if(state === "COOLDOWN") engineHint.textContent = "Blocked";
+
+      engineLight.className = "light";
+      engineState.className = "engineState";
+
+      if(state === "COOLDOWN"){
+        engineState.textContent = "COOLDOWN";
+        engineState.classList.add("cool");
+        engineLight.classList.remove("on");
+      }else if(state === "VALET" && !engineOn){
+        engineLight.classList.add("valet");
+        engineState.textContent = "VALET";
+        engineState.classList.add("valet");
+      }else if(engineOn){
+        engineLight.classList.add("on");
+        engineState.textContent = "ON";
+        engineState.classList.add("on");
+      }else{
+        engineState.textContent = "OFF";
+        engineState.classList.add("off");
+      }
+
+      asciiDash.textContent = ascii();
+
+      const hint = [
+        `Master ${getMaster()}`,
+        `Valet ${getValet()}`,
+        `Admin ${getAdmin()}`
+      ].join("\n");
+
+      codesHint.textContent = hint;
+    }
+
+    function startBlink(){
+      if(blinkTimer) return;
+      blinkTimer = setInterval(()=>{
+        if(engineOn && state !== "LOCKED" && state !== "COOLDOWN"){
+          engineLight.classList.toggle("blinkOff");
+        }else{
+          engineLight.classList.remove("blinkOff");
+        }
+      }, 420);
+    }
+
+    function stopBlink(){
+      if(blinkTimer){
+        clearInterval(blinkTimer);
+        blinkTimer = null;
+      }
+      engineLight.classList.remove("blinkOff");
+    }
+
+    function resetInactivity(){
+      if(inactivityTimer) clearTimeout(inactivityTimer);
+      const start = Date.now();
+
+      inactivityTimer = setTimeout(()=>{
+        engineOn = false;
+        failed = 0;
+        cooldown = false;
+
+        if(cooldownTimer){ clearInterval(cooldownTimer); cooldownTimer = null; }
+        state = "LOCKED";
+        stopBlink();
+
+        setAlert("Auto lock after 60 seconds inactivity", "bad");
+        addLog("Auto lock triggered", "warn");
+        beep("bad");
+        updateUI();
+      }, INACTIVITY_LIMIT);
+
+      if(timerUi) clearInterval(timerUi);
+      timerUi = setInterval(()=>{
+        const left = Math.max(0, INACTIVITY_LIMIT - (Date.now() - start));
+        timerText.textContent = `Inactivity ${Math.ceil(left/1000)}s`;
+        if(left <= 0) clearInterval(timerUi);
+      }, 250);
+    }
+
+    function startCooldown(){
+      cooldown = true;
+      state = "COOLDOWN";
+      engineOn = false;
+      stopBlink();
+
+      let remaining = COOLDOWN_SECONDS;
+      setAlert(`Cooldown ${remaining}s`, "bad");
+      addLog(`Cooldown started ${COOLDOWN_SECONDS}s`, "warn");
+      beep("bad");
+      updateUI();
+
+      if(cooldownTimer) clearInterval(cooldownTimer);
+      cooldownTimer = setInterval(()=>{
+        remaining -= 1;
+        if(remaining <= 0){
+          clearInterval(cooldownTimer);
+          cooldownTimer = null;
+          cooldown = false;
+          failed = 0;
+          state = "LOCKED";
+          setAlert("Cooldown ended", "ok");
+          addLog("Cooldown ended", "ok");
+          beep("ok");
+          updateUI();
+        }else{
+          setAlert(`Cooldown ${remaining}s`, "bad");
+        }
+      }, 1000);
+    }
+
+    function bumpFail(){
+      failed += 1;
+      setAlert(`Wrong code (${failed}/${MAX_FAILS})`, "bad");
+      addLog(`Wrong code attempt (${failed}/${MAX_FAILS})`, "bad");
+      beep("bad");
+      if(failed >= MAX_FAILS) startCooldown();
+      updateUI();
+    }
+
+    async function unlockFlow(){
+      resetInactivity();
+
+      if(cooldown){
+        setAlert("Cooldown active", "bad");
+        beep("warn");
+        return;
+      }
+
+      const code = passInput.value.trim();
+      const v = validateCodeFormat(code);
+      if(!v.ok){
+        failed += 1;
+        setAlert(v.msg, "bad");
+        addLog(`Format fail: ${v.msg}`, "bad");
+        beep("bad");
+        if(failed >= MAX_FAILS) startCooldown();
+        updateUI();
+        return;
+      }
+
+      if(code === getMaster()){
+        await showLoader("Unlocking and starting engine", 900);
+        state = "UNLOCKED";
+        engineOn = true;
+        failed = 0;
+        setAlert("Master accepted, engine ON", "ok");
+        addLog("Master accepted", "ok");
+        beep("ok");
+        startBlink();
+        updateUI();
+        return;
+      }
+
+      if(code === getValet()){
+        await showLoader("Entering valet mode", 650);
+        state = "VALET";
+        engineOn = false;
+        failed = 0;
+        setAlert("Valet mode active, engine OFF", "warn");
+        addLog("Valet accepted", "warn");
+        beep("warn");
+        stopBlink();
+        updateUI();
+        return;
+      }
+
+      bumpFail();
+    }
+
+    async function valetFlow(){
+      resetInactivity();
+
+      if(cooldown){
+        setAlert("Cooldown active", "bad");
+        beep("warn");
+        return;
+      }
+
+      const code = passInput.value.trim();
+      const v = validateCodeFormat(code);
+      if(!v.ok){
+        failed += 1;
+        setAlert(v.msg, "bad");
+        addLog(`Format fail: ${v.msg}`, "bad");
+        beep("bad");
+        if(failed >= MAX_FAILS) startCooldown();
+        updateUI();
+        return;
+      }
+
+      if(code === getValet()){
+        await showLoader("Validating valet access", 520);
+        state = "VALET";
+        engineOn = false;
+        failed = 0;
+        setAlert("Valet mode active", "warn");
+        addLog("Valet mode activated", "warn");
+        beep("warn");
+        stopBlink();
+        updateUI();
+        return;
+      }
+
+      bumpFail();
+    }
+
+    async function startEngineFlow(){
+      resetInactivity();
+
+      if(cooldown){
+        setAlert("Cooldown active", "bad");
+        beep("warn");
+        return;
+      }
+      if(state === "LOCKED"){
+        setAlert("Unlock first", "bad");
+        addLog("Start engine blocked, locked", "warn");
+        beep("bad");
+        return;
+      }
+
+      await showLoader("Starting engine", 650);
+      engineOn = true;
+      startBlink();
+
+      if(state === "VALET"){
+        setAlert("Engine ON in valet mode", "warn");
+        addLog("Engine started in valet mode", "warn");
+        beep("warn");
+      }else{
+        setAlert("Engine ON", "ok");
+        addLog("Engine started", "ok");
+        beep("ok");
+      }
+
+      updateUI();
+    }
+
+    async function lockFlow(){
+      resetInactivity();
+
+      if(cooldown){
+        setAlert("Cooldown active", "bad");
+        beep("warn");
+        return;
+      }
+
+      await showLoader("Locking system", 520);
+      engineOn = false;
+      failed = 0;
+      state = "LOCKED";
+      stopBlink();
+
+      setAlert("Locked", "ok");
+      addLog("Manual lock", "info");
+      beep("tap");
+      updateUI();
+    }
+
+    function applyTheme(){
+      const t = load(k.theme, "dark");
+      if(t === "neon") document.body.classList.add("neon");
+      else document.body.classList.remove("neon");
+    }
+
+    function toggleTheme(){
+      const t = load(k.theme, "dark");
+      save(k.theme, t === "neon" ? "dark" : "neon");
+      applyTheme();
+      addLog("Theme toggled", "info");
+      beep("tap");
+      updateUI();
+    }
+
+    function openAdmin(){
+      adminModal.classList.add("open");
+      setAdminAlert(adminAuthed ? "Admin active" : "Login required", "info");
+      adminPassInput.value = "";
+      newMaster.value = "";
+      newValet.value = "";
+      beep("tap");
+    }
+
+    function closeAdminModal(){
+      adminModal.classList.remove("open");
+      beep("tap");
+    }
+
+    function adminLogin(){
+      const p = adminPassInput.value.trim();
+      if(p === getAdmin()){
+        adminAuthed = true;
+        setAdminAlert("Login success", "ok");
+        addLog("Admin login success", "ok");
+        beep("ok");
+      }else{
+        adminAuthed = false;
+        setAdminAlert("Wrong admin passcode", "bad");
+        addLog("Admin login failed", "bad");
+        beep("bad");
+      }
+      updateUI();
+    }
+
+    function adminLogout(){
+      adminAuthed = false;
+      setAdminAlert("Logged out", "info");
+      addLog("Admin logout", "info");
+      beep("tap");
+      updateUI();
+    }
+
+    function saveCodes(){
+      if(!adminAuthed){
+        setAdminAlert("Login first", "bad");
+        beep("bad");
+        return;
+      }
+
+      const m = newMaster.value.trim();
+      const v = newValet.value.trim();
+
+      if(m){
+        const vm = validateCodeFormat(m);
+        if(!vm.ok){
+          setAdminAlert(`Master invalid: ${vm.msg}`, "bad");
+          beep("bad");
+          return;
+        }
+      }
+      if(v){
+        const vv = validateCodeFormat(v);
+        if(!vv.ok){
+          setAdminAlert(`Valet invalid: ${vv.msg}`, "bad");
+          beep("bad");
+          return;
+        }
+      }
+
+      if(m) save(k.master, m);
+      if(v) save(k.valet, v);
+
+      setAdminAlert("Codes saved", "ok");
+      addLog("Codes updated", "ok");
+      beep("ok");
+      updateUI();
+    }
+
+    function resetCodes(){
+      if(!adminAuthed){
+        setAdminAlert("Login first", "bad");
+        beep("bad");
+        return;
+      }
+      save(k.master, DEFAULT_MASTER);
+      save(k.valet, DEFAULT_VALET);
+      save(k.admin, getAdmin());
+      setAdminAlert("Codes reset to default", "warn");
+      addLog("Codes reset to default", "warn");
+      beep("warn");
+      updateUI();
+    }
+
+    function exportState(){
+      if(!adminAuthed){
+        setAdminAlert("Login first", "bad");
+        beep("bad");
+        return;
+      }
+
+      const payload = {
+        time: new Date().toISOString(),
+        state,
+        engineOn,
+        failed,
+        cooldown,
+        master: getMaster(),
+        valet: getValet()
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "car_security_state.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      setAdminAlert("State exported", "ok");
+      addLog("State exported", "info");
+      beep("ok");
+    }
+
+    function wipeAll(){
+      if(!adminAuthed){
+        setAdminAlert("Login first", "bad");
+        beep("bad");
+        return;
+      }
+
+      localStorage.removeItem(k.master);
+      localStorage.removeItem(k.valet);
+      localStorage.removeItem(k.admin);
+      localStorage.removeItem(k.log);
+      localStorage.removeItem(k.theme);
+
+      adminAuthed = false;
+      state = "LOCKED";
+      engineOn = false;
+      failed = 0;
+      cooldown = false;
+
+      setAdminAlert("All data wiped", "warn");
+      setAlert("All data wiped", "warn");
+      beep("warn");
+      renderLog();
+      applyTheme();
+      updateUI();
+    }
+
+    function downloadLog(){
+      const list = loadLog();
+      const lines = list.map(x => `${x.t} [${(x.tag||"info").toUpperCase()}] ${x.m}`);
+      const blob = new Blob([lines.join("\n")], {type:"text/plain"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "car_security_events.log.txt";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      addLog("Log downloaded", "info");
+      beep("tap");
+    }
+
+    function clearLog(){
+      localStorage.removeItem(k.log);
+      renderLog();
+      addLog("Log cleared", "warn");
+      beep("warn");
+    }
+
+    function initDefaults(){
+      if(localStorage.getItem(k.master) === null) save(k.master, DEFAULT_MASTER);
+      if(localStorage.getItem(k.valet) === null) save(k.valet, DEFAULT_VALET);
+      if(localStorage.getItem(k.admin) === null) save(k.admin, DEFAULT_ADMIN);
+      if(localStorage.getItem(k.theme) === null) save(k.theme, "dark");
+    }
+
+    unlockBtn.addEventListener("click", ()=>{ beep("tap"); unlockFlow(); });
+    valetBtn.addEventListener("click", ()=>{ beep("tap"); valetFlow(); });
+    startBtn.addEventListener("click", ()=>{ beep("tap"); startEngineFlow(); });
+    lockBtn.addEventListener("click", ()=>{ beep("tap"); lockFlow(); });
+
+    toggleThemeBtn.addEventListener("click", toggleTheme);
+    adminBtn.addEventListener("click", openAdmin);
+
+    closeAdmin.addEventListener("click", closeAdminModal);
+    adminModal.addEventListener("click", (e)=>{ if(e.target === adminModal) closeAdminModal(); });
+
+    adminLoginBtn.addEventListener("click", adminLogin);
+    adminLogoutBtn.addEventListener("click", adminLogout);
+    saveCodesBtn.addEventListener("click", saveCodes);
+    resetCodesBtn.addEventListener("click", resetCodes);
+    exportStateBtn.addEventListener("click", exportState);
+    wipeAllBtn.addEventListener("click", wipeAll);
+
+    downloadBtn.addEventListener("click", downloadLog);
+    clearBtn.addEventListener("click", clearLog);
+
+    passInput.addEventListener("input", resetInactivity);
+    passInput.addEventListener("keydown", e=>{
+      if(e.key === "Enter") unlockFlow();
+    });
+
+    setInterval(()=>{
+      if(Date.now() - (resetInactivity._last || Date.now()) > INACTIVITY_LIMIT) return;
+    }, 1000);
+
+    (function boot(){
+      initDefaults();
+      applyTheme();
+      renderLog();
+      state = "LOCKED";
+      engineOn = false;
+      failed = 0;
+      cooldown = false;
+      updateUI();
+      setAlert("Ready", "info");
+      addLog("Page loaded", "info");
+      resetInactivity();
+
+      const _reset = resetInactivity;
+      resetInactivity = function(){
+        resetInactivity._last = Date.now();
+        return _reset();
+      };
+
+      startBlink();
+    })();
+  </script>
 </body>
 </html>
+```
